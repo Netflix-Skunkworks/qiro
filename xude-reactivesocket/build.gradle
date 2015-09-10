@@ -15,4 +15,5 @@
  *
  */
 dependencies {
+    compile 'io.reactivesocket:reactivesocket:0.0.1-SNAPSHOT'
 }
