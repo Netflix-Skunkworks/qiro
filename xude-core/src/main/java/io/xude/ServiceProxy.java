@@ -18,4 +18,9 @@ public class ServiceProxy<Request, Response> implements Service<Request, Respons
     public Publisher<Double> availability() {
         return underlying.availability();
     }
+
+    @Override
+    public Publisher<Void> close() {
+        return underlying.close();
+    }
 }

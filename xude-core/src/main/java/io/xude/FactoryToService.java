@@ -1,5 +1,6 @@
 package io.xude;
 
+import io.xude.util.EmptySubscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -12,12 +13,14 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> reqStream) {
+    public Publisher<Resp> apply(Publisher<Req> inputs) {
         return new Publisher<Resp>() {
             @Override
             public void subscribe(Subscriber<? super Resp> subscriber) {
                 final Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
                 servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
+                    private Service<Req, Resp> service = null;
+
                     @Override
                     public void onSubscribe(Subscription subscription) {
                         // request only one service
@@ -26,7 +29,8 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
 
                     @Override
                     public void onNext(Service<Req, Resp> service) {
-                        final Publisher<Resp> responses = service.apply(reqStream);
+                        this.service = service;
+                        final Publisher<Resp> responses = service.apply(inputs);
                         responses.subscribe(new Subscriber<Resp>() {
                             @Override
                             public void onSubscribe(Subscription s) {
@@ -44,7 +48,9 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                             }
 
                             @Override
-                            public void onComplete() {}
+                            public void onComplete() {
+                                service.close().subscribe(new EmptySubscriber<Void>());
+                            }
                         });
                     }
 
@@ -56,7 +62,6 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                     @Override
                     public void onComplete() {
                         subscriber.onComplete();
-                        factory.close();
                     }
                 });
             }
@@ -66,5 +71,10 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
     @Override
     public Publisher<Double> availability() {
         return Services.ALWAYS_AVAILABLE;
+    }
+
+    @Override
+    public Publisher<Void> close() {
+        return factory.close();
     }
 }

@@ -5,16 +5,26 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Services {
     public static Publisher<Double> ALWAYS_AVAILABLE = s -> s.onNext(1.0);
+    public static Supplier<Void> EMPTY_CLOSE_FN = () -> null;
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(Function<Req, Resp> fn) {
-        return fromFunction(fn, ALWAYS_AVAILABLE);
+        return fromFunction(fn, EMPTY_CLOSE_FN);
     }
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(
         Function<Req, Resp> fn,
+        Supplier<Void> closeFn
+    ) {
+        return fromFunction(fn, closeFn, ALWAYS_AVAILABLE);
+    }
+
+    public static <Req, Resp> Service<Req, Resp> fromFunction(
+        Function<Req, Resp> fn,
+        Supplier<Void> closeFn,
         Publisher<Double> availability
     ) {
         return new Service<Req, Resp>() {
@@ -22,7 +32,7 @@ public class Services {
             public Publisher<Resp> apply(Publisher<Req> inputs) {
                 return new Publisher<Resp>() {
                     @Override
-                    public void subscribe(Subscriber<? super Resp> stringSubscriber) {
+                    public void subscribe(Subscriber<? super Resp> subscriber) {
                         inputs.subscribe(new Subscriber<Req>() {
                             @Override
                             public void onSubscribe(Subscription s) {
@@ -32,18 +42,17 @@ public class Services {
                             @Override
                             public void onNext(Req input) {
                                 final Resp resp = fn.apply(input);
-                                stringSubscriber.onNext(resp
-                                );
+                                subscriber.onNext(resp);
                             }
 
                             @Override
                             public void onError(Throwable t) {
-                                stringSubscriber.onError(t);
+                                subscriber.onError(t);
                             }
 
                             @Override
                             public void onComplete() {
-                                stringSubscriber.onComplete();
+                                subscriber.onComplete();
                             }
                         });
                     }
@@ -53,6 +62,11 @@ public class Services {
             @Override
             public Publisher<Double> availability() {
                 return availability;
+            }
+
+            @Override
+            public Publisher<Void> close() {
+                return s -> s.onNext(closeFn.get());
             }
         };
     }

@@ -14,4 +14,5 @@ public interface Service<Request, Response> {
     //    public Observable<Response> requestChannel(final Observable<Request> requests);
 
     public Publisher<Double> availability();
+    public Publisher<Void> close();
 }

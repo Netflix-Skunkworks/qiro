@@ -26,7 +26,7 @@ public class Filters {
         Function<FilterReq, Req> fnIn,
         Function<Resp, FilterResp> fnOut
     ) {
-        return new AbstractFilter<FilterReq, Req, Resp, FilterResp>() {
+        return new Filter<FilterReq, Req, Resp, FilterResp>() {
             @Override
             public Publisher<FilterResp> apply(
                 Publisher<FilterReq> inputs,

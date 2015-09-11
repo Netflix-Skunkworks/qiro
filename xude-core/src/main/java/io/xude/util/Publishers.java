@@ -11,6 +11,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class Publishers {
+    public static <T> Publisher<T> never() {
+        return s -> {};
+    }
+
     public static <T> Publisher<T> just(T singleValue) {
         return range(singleValue);
     }
