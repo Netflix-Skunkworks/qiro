@@ -80,13 +80,9 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
     @Override
     public Publisher<Void> close() {
-        return new Publisher<Void>() {
-            @Override
-            public void subscribe(Subscriber<? super Void> s) {
-                synchronized (RoundRobinBalancer.this) {
-                    // TODO: implement close
-                    // services.forEach(service -> service.close());
-                }
+        return s -> {
+            synchronized (RoundRobinBalancer.this) {
+                 services.forEach(Service::close);
             }
         };
     }
