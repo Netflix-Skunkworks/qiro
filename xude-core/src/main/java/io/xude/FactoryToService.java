@@ -17,7 +17,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
         return new Publisher<Resp>() {
             @Override
             public void subscribe(Subscriber<? super Resp> subscriber) {
-                final Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
+                Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
                 servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
                     private Service<Req, Resp> service = null;
 
@@ -30,7 +30,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                     @Override
                     public void onNext(Service<Req, Resp> service) {
                         this.service = service;
-                        final Publisher<Resp> responses = service.apply(inputs);
+                        Publisher<Resp> responses = service.apply(inputs);
                         responses.subscribe(new Subscriber<Resp>() {
                             @Override
                             public void onSubscribe(Subscription s) {
@@ -50,6 +50,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                             @Override
                             public void onComplete() {
                                 service.close().subscribe(new EmptySubscriber<Void>());
+                                subscriber.onComplete();
                             }
                         });
                     }
@@ -60,9 +61,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                     }
 
                     @Override
-                    public void onComplete() {
-                        subscriber.onComplete();
-                    }
+                    public void onComplete() {}
                 });
             }
         };

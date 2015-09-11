@@ -31,14 +31,14 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
                 factory.apply().subscribe(new EmptySubscriber<Service<Req, Resp>>() {
                     @Override
                     public void onNext(Service<Req, Resp> service) {
-                        System.out.println("Eager service creation " + j);
+                        System.out.println("RoundRobinBalancer: Eager creation of service" + j);
                         final ServiceProxy<Req, Resp> proxy = new ServiceProxy<Req, Resp>(service) {
                             private int jj = j++;
 
                             @Override
                             public Publisher<Void> close() {
                                 return s -> {
-                                    System.out.println("Service_" + jj + " load DOWN");
+                                    System.out.println("Service" + jj + " load DOWN");
                                     s.onComplete();
                                 };
                             }
@@ -69,7 +69,7 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
                     } else {
                         i = (i + 1) % services.size();
                         Service<Req, Resp> service = services.get(i);
-                        System.out.println("Service_" + i + " load UP");;
+                        System.out.println("Service" + i + " load UP");;
                         s.onNext(service);
                         s.onComplete();
                     }
