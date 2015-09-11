@@ -40,8 +40,8 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
                 }
             });
 
-            final double l = (1.0 - availabilityValue) * load;
-            System.out.println(this.toString() + " Service load =" + l);
+            final double l = (2.0 - availabilityValue) * load;
+            System.out.println(this.hashCode() + " Service load =" + l);
             return l;
         }
 
@@ -64,7 +64,7 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
                     @Override
                     public void onNext(Service<Req, Resp> service) {
-                        System.out.println("Creating service !!!");
+                        System.out.println("HeapBalancer: Creating service");
                         WeightedService<Req, Resp> weightedService = new WeightedService<>(service);
                         synchronized (HeapBalancer.this) {
                             queue.add(weightedService);
@@ -85,6 +85,7 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
                 } else {
                     WeightedService<Req, Resp> service = queue.poll();
                     service.increment();
+                    queue.offer(service);
                     s.onNext(service);
                     s.onComplete();
                 }

@@ -70,6 +70,11 @@ public class LoadBalancerTest {
         testAsynchronousLoadBalancer(RoundRobinBalancer::new);
     }
 
+    @Test(timeout = 10_000L)
+    public void testAsynchronousHeapBalancer() throws InterruptedException {
+        testAsynchronousLoadBalancer(HeapBalancer::new);
+    }
+
     private void testAsynchronousLoadBalancer(
         Function<Publisher<ServiceFactory<Integer, String>>, ServiceFactory<Integer, String>> balancerFactory
     ) throws InterruptedException {
