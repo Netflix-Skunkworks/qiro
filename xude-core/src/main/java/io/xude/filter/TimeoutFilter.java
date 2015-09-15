@@ -7,7 +7,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TimeoutFilter<Request, Response>
     implements Filter<Request, Request, Response, Response>
@@ -19,17 +18,15 @@ public class TimeoutFilter<Request, Response>
             return thread;
         });
 
-    private final long maxDurationBetweenResponsesMs;
+    private final long maxDurationMs;
 
-    public TimeoutFilter(long maxDurationBetweenResponsesMs) {
-        // TODO: refactor that into max duration of the channel
-        this.maxDurationBetweenResponsesMs = maxDurationBetweenResponsesMs;
+    public TimeoutFilter(long maxDurationMs) {
+        this.maxDurationMs = maxDurationMs;
     }
 
     @Override
     public Publisher<Response> apply(Publisher<Request> inputs, Service<Request, Response> service) {
         return new Publisher<Response>() {
-            private AtomicBoolean interrupted = new AtomicBoolean(false);
             private ScheduledFuture<?> schedule = null;
             private volatile Subscription respSubscription = null;
 
@@ -40,32 +37,22 @@ public class TimeoutFilter<Request, Response>
                     public void onSubscribe(Subscription s) {
                         respSubscription = s;
                         subscriber.onSubscribe(s);
-                        rearmTimer();
+                        armTimer();
                     }
 
                     @Override
                     public void onNext(Response response) {
-                        if (interrupted.get()) {
-                            return;
-                        }
-                        rearmTimer();
                         subscriber.onNext(response);
                     }
 
                     @Override
                     public void onError(Throwable t) {
-                        if (interrupted.get()) {
-                            return;
-                        }
                         cancelTimer();
                         subscriber.onError(t);
                     }
 
                     @Override
                     public void onComplete() {
-                        if (interrupted.get()) {
-                            return;
-                        }
                         cancelTimer();
                         subscriber.onComplete();
                     }
@@ -76,14 +63,11 @@ public class TimeoutFilter<Request, Response>
                         }
                     }
 
-                    private void rearmTimer() {
-                        cancelTimer();
+                    private void armTimer() {
                         schedule = EXECUTOR.schedule(() -> {
-                            if (interrupted.compareAndSet(false, true)) {
-                                subscriber.onError(new Exception("timeout"));
-                                respSubscription.cancel();
-                            }
-                        }, maxDurationBetweenResponsesMs, TimeUnit.MILLISECONDS);
+                            subscriber.onError(new Exception("timeout"));
+                            respSubscription.cancel();
+                        }, maxDurationMs, TimeUnit.MILLISECONDS);
                     }
                 });
             }
