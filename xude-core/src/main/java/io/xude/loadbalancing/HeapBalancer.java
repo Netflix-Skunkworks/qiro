@@ -40,9 +40,15 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
                 }
             });
 
-            final double l = (2.0 - availabilityValue) * load;
-            System.out.println(this.hashCode() + " Service load =" + l);
-            return l;
+            // in case all availabilities are zeros, it nicely degrades to a normal
+            // least loaded loadbalancer.
+            double penaltyFactor = (double) Integer.MAX_VALUE;
+            if (availabilityValue != 0.0) {
+                penaltyFactor = (1.0 / availabilityValue) * load;
+            }
+
+            System.out.println(this.hashCode() + " Service load =" + penaltyFactor);
+            return penaltyFactor * load;
         }
 
         @Override

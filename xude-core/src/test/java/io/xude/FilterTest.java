@@ -11,7 +11,7 @@ import static io.xude.util.Publishers.toList;
 import static org.junit.Assert.assertTrue;
 
 public class FilterTest {
-    @Test(timeout = 10_000L)
+    @Test(timeout = 100_000L)
     public void testBasicFilter() throws InterruptedException {
         Filter<Integer, Integer, String, String> square =
             Filters.fromInputFunction(x -> x * x);

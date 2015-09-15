@@ -36,7 +36,7 @@ public class Services {
                         inputs.subscribe(new Subscriber<Req>() {
                             @Override
                             public void onSubscribe(Subscription s) {
-                                s.request(Long.MAX_VALUE);
+                                subscriber.onSubscribe(s);
                             }
 
                             @Override
@@ -66,7 +66,10 @@ public class Services {
 
             @Override
             public Publisher<Void> close() {
-                return s -> s.onNext(closeFn.get());
+                return s -> {
+                    s.onNext(closeFn.get());
+                    s.onComplete();
+                };
             }
         };
     }

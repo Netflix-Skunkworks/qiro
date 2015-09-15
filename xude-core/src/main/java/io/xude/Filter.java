@@ -28,9 +28,8 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
                 Publisher<FilterRequest> inputs,
                 Service<FilterRequest2, FilterResponse2> service
             ) {
-                final Service<Request, Response> innerService =
-                    other.andThen(service);
-                final Service<FilterRequest, FilterResponse> outerService =
+                Service<Request, Response> innerService = other.andThen(service);
+                Service<FilterRequest, FilterResponse> outerService =
                     Filter.this.andThen(innerService);
 
                 return outerService.apply(inputs);
@@ -74,8 +73,8 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
                     public void subscribe(Subscriber<? super Service<FilterRequest, FilterResponse>> s) {
                         other.apply().subscribe(new Subscriber<Service<Request, Response>>() {
                             @Override
-                            public void onSubscribe(Subscription s) {
-                                s.request(1L);
+                            public void onSubscribe(Subscription subscription) {
+                                s.onSubscribe(subscription);
                             }
 
                             @Override

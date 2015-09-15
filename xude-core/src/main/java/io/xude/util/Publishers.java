@@ -27,14 +27,14 @@ public class Publishers {
                     @Override
                     public void request(long n) {
                         for (T value: values) {
+                            System.out.println("Publishers.range -> " + value);
                             s.onNext(value);
                         }
                         s.onComplete();
                     }
 
                     @Override
-                    public void cancel() {
-                    }
+                    public void cancel() {}
                 });
             }
         };
@@ -47,7 +47,7 @@ public class Publishers {
                 inputs.subscribe(new Subscriber<U>() {
                     @Override
                     public void onSubscribe(Subscription subscription) {
-                        subscription.request(Long.MAX_VALUE);
+                        subscriber.onSubscribe(subscription);
                     }
 
                     @Override
@@ -76,7 +76,9 @@ public class Publishers {
 
         publisher.subscribe(new Subscriber<T>() {
             @Override
-            public void onSubscribe(Subscription s) {}
+            public void onSubscribe(Subscription s) {
+                s.request(Long.MAX_VALUE);
+            }
 
             @Override
             public void onNext(T t) {
