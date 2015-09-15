@@ -36,17 +36,23 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
                 service.apply(restartablePublisher).subscribe(new Subscriber<Response>() {
                     @Override
                     public void onSubscribe(Subscription s) {
-                        s.request(Long.MAX_VALUE);
+                        subscriber.onSubscribe(s);
                     }
 
                     @Override
                     public void onNext(Response response) {
+                        if (canceled) {
+                            return;
+                        }
                         started = true;
                         subscriber.onNext(response);
                     }
 
                     @Override
                     public void onError(Throwable t) {
+                        if (canceled) {
+                            return;
+                        }
                         // if the exception is Retryable and the stream of responses didn't started,
                         // it's safe to retry the call.
                         if (retryBudget > 0 && !started && t instanceof Retryable) {

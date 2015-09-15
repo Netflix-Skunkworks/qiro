@@ -49,10 +49,10 @@ public class RestartablePublisher<T> implements Publisher<T> {
                 synchronized (RestartablePublisher.this) {
                     cache.add(t);
                 }
-                subscriber.onNext(t);
                 synchronized (RestartablePublisher.this) {
                     subscribeds.forEach(s -> s.onNext(t));
                 }
+                subscriber.onNext(t);
             }
 
             @Override

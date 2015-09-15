@@ -1,5 +1,6 @@
 package io.xude.util;
 
+import io.xude.ThrowableFunction;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -8,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class Publishers {
     public static <T> Publisher<T> never() {
@@ -40,7 +40,7 @@ public class Publishers {
         };
     }
 
-    public static <T, U> Publisher<T> map(Publisher<U> inputs, Function<U, T> f) {
+    public static <T, U> Publisher<T> map(Publisher<U> inputs, ThrowableFunction<U, T> f) {
         return new Publisher<T>() {
             @Override
             public void subscribe(Subscriber<? super T> subscriber) {
@@ -52,8 +52,12 @@ public class Publishers {
 
                     @Override
                     public void onNext(U filterReq) {
-                        final T req = f.apply(filterReq);
-                        subscriber.onNext(req);
+                        try {
+                            T req = f.apply(filterReq);
+                            subscriber.onNext(req);
+                        } catch (Throwable ex) {
+                            subscriber.onError(ex);
+                        }
                     }
 
                     @Override

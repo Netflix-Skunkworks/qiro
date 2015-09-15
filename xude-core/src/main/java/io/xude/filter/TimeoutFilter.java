@@ -22,6 +22,7 @@ public class TimeoutFilter<Request, Response>
     private final long maxDurationBetweenResponsesMs;
 
     public TimeoutFilter(long maxDurationBetweenResponsesMs) {
+        // TODO: refactor that into max duration of the channel
         this.maxDurationBetweenResponsesMs = maxDurationBetweenResponsesMs;
     }
 

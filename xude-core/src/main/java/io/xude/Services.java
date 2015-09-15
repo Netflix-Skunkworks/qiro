@@ -4,26 +4,25 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class Services {
     public static Publisher<Double> ALWAYS_AVAILABLE = s -> s.onNext(1.0);
     public static Supplier<Void> EMPTY_CLOSE_FN = () -> null;
 
-    public static <Req, Resp> Service<Req, Resp> fromFunction(Function<Req, Resp> fn) {
+    public static <Req, Resp> Service<Req, Resp> fromFunction(ThrowableFunction<Req, Resp> fn) {
         return fromFunction(fn, EMPTY_CLOSE_FN);
     }
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(
-        Function<Req, Resp> fn,
+        ThrowableFunction<Req, Resp> fn,
         Supplier<Void> closeFn
     ) {
         return fromFunction(fn, closeFn, ALWAYS_AVAILABLE);
     }
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(
-        Function<Req, Resp> fn,
+        ThrowableFunction<Req, Resp> fn,
         Supplier<Void> closeFn,
         Publisher<Double> availability
     ) {
@@ -41,8 +40,12 @@ public class Services {
 
                             @Override
                             public void onNext(Req input) {
-                                final Resp resp = fn.apply(input);
-                                subscriber.onNext(resp);
+                                try {
+                                    Resp resp = fn.apply(input);
+                                    subscriber.onNext(resp);
+                                } catch (io.xude.failures.Exception ex) {
+                                    subscriber.onError(ex);
+                                }
                             }
 
                             @Override

@@ -1,5 +1,6 @@
 package io.xude;
 
+import io.xude.filter.StatsFilter;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
