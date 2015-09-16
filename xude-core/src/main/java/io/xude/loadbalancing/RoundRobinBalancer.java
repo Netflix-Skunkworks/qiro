@@ -9,7 +9,7 @@ import org.reactivestreams.Subscription;
 
 import java.util.*;
 
-public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
+public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
     private final List<ServiceFactory<Req, Resp>> factories;
     private int i;
 

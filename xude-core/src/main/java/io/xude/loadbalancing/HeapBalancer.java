@@ -10,7 +10,7 @@ import org.reactivestreams.Subscription;
 
 import java.util.PriorityQueue;
 
-public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
+public class HeapBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
     final private PriorityQueue<WeightedServiceFactory<Req, Resp>> queue;
 
     private class WeightedServiceFactory<Req, Resp>
