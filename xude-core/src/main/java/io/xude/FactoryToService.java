@@ -34,7 +34,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
                         responses.subscribe(new Subscriber<Resp>() {
                             @Override
                             public void onSubscribe(Subscription s) {
-                                s.request(Long.MAX_VALUE);
+                                subscriber.onSubscribe(s);
                             }
 
                             @Override
@@ -69,7 +69,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
 
     @Override
     public Publisher<Double> availability() {
-        return Services.ALWAYS_AVAILABLE;
+        return factory.availability();
     }
 
     @Override
