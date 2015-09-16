@@ -11,7 +11,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.xude.util.Publishers.range;
+import static io.xude.util.Publishers.from;
 import static io.xude.util.Publishers.toList;
 import static org.junit.Assert.assertTrue;
 
@@ -45,7 +45,7 @@ public class RetryFilterTest {
             .andThen(failFirstFilter)
             .andThen(Services.fromFunction(Object::toString));
 
-        List<String> strings = toList(service.apply(range(1,2,3)));
+        List<String> strings = toList(service.apply(from(1, 2, 3)));
 
         if (expectResponse) {
             assertTrue(strings.size() == 3);

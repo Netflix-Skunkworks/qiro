@@ -6,7 +6,7 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static io.xude.util.Publishers.range;
+import static io.xude.util.Publishers.from;
 import static io.xude.util.Publishers.toList;
 
 public class StatsFilterTest {
@@ -17,6 +17,6 @@ public class StatsFilterTest {
         Service<Integer, String> toStringService =
             statsFilter.andThen(Services.fromFunction(Object::toString));
 
-        List<String> strings = toList(toStringService.apply(range(1, 2, 3)));
+        List<String> strings = toList(toStringService.apply(from(1, 2, 3)));
     }
 }

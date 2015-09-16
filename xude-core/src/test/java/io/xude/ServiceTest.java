@@ -23,11 +23,11 @@ public class ServiceTest {
         assertTrue(singleString.get(0).equals("1"));
 
         Publisher<String> stringPublisher2 =
-            toStringService.apply(range(1, 2, 3, 4, 5));
+            toStringService.apply(from(1, 2, 3, 4, 5));
         List<String> strings = toList(stringPublisher2);
         assertTrue(strings.equals(Arrays.asList("1", "2", "3", "4", "5")));
 
-        Publisher<Double> doubles = range(1.0, 2.0, 3.0, 4.0, 5.0);
+        Publisher<Double> doubles = from(1.0, 2.0, 3.0, 4.0, 5.0);
         Filter<Double, Integer, String, String> filter =
             Filters.fromFunction(x -> (int) (2 * x), str -> "'" + str + "'");
         Publisher<String> apply = filter.apply(doubles, toStringService);

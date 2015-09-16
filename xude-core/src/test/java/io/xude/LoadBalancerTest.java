@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import static io.xude.util.Publishers.just;
-import static io.xude.util.Publishers.range;
+import static io.xude.util.Publishers.from;
 import static io.xude.util.Publishers.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -39,11 +39,11 @@ public class LoadBalancerTest {
         ServiceFactory<Integer, String> factory1 = createFactory("1", c1);
 
         ServiceFactory<Integer, String> balancer =
-            balancerFactory.apply(range(factory0, factory1));
+            balancerFactory.apply(from(factory0, factory1));
         Service<Integer, String> service = new FactoryToService<>(balancer);
 
-        List<String> strings1 = toList(service.apply(range(1, 2)));
-        List<String> strings2 = toList(service.apply(range(3, 4)));
+        List<String> strings1 = toList(service.apply(from(1, 2)));
+        List<String> strings2 = toList(service.apply(from(3, 4)));
         System.out.println(strings1);
         System.out.println(strings2);
 
@@ -92,8 +92,8 @@ public class LoadBalancerTest {
             () -> null
         );
 
-        ServiceFactory<Integer, String> balancer = balancerFactory.apply(range(factory0, factory1));
-        FactoryToService<Integer, String> service = new FactoryToService<>(balancer);
+        ServiceFactory<Integer, String> balancer = balancerFactory.apply(from(factory0, factory1));
+        Service<Integer, String> service = balancer.toService();
 
         service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
         service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));

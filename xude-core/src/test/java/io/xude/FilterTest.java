@@ -6,7 +6,7 @@ import org.reactivestreams.Publisher;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.xude.util.Publishers.range;
+import static io.xude.util.Publishers.from;
 import static io.xude.util.Publishers.toList;
 import static org.junit.Assert.assertTrue;
 
@@ -25,7 +25,7 @@ public class FilterTest {
         Service<Integer, String> operation2 = xPlusOneSquare.andThen(toStringService);
 
 
-        Publisher<Integer> inputs = range(1, 2, 3, 4, 5);
+        Publisher<Integer> inputs = from(1, 2, 3, 4, 5);
         Publisher<String> outputs = operation.apply(inputs);
         Publisher<String> outputs2 = operation2.apply(inputs);
 
@@ -46,12 +46,13 @@ public class FilterTest {
         Filter<Integer, Integer, String, String> square =
             Filters.fromInputFunction(x -> x * x);
 
-        ServiceFactory<Integer, String> squareToStringFactory = square.andThen(factory);
         Service<Integer, String> squareToString =
-            new FactoryToService<>(squareToStringFactory);
+            square
+                .andThen(factory)
+                .toService();
 
         Publisher<String> stringPublisher2 =
-            squareToString.apply(range(1, 2, 3, 4, 5));
+            squareToString.apply(from(1, 2, 3, 4, 5));
         List<String> strings = toList(stringPublisher2);
         System.out.println(strings);
         assertTrue(strings.equals(Arrays.asList("1", "4", "9", "16", "25")));

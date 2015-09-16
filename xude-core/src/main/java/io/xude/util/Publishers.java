@@ -1,5 +1,6 @@
 package io.xude.util;
 
+import io.xude.ThrowableBiFunction;
 import io.xude.ThrowableFunction;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -16,45 +17,58 @@ public class Publishers {
     }
 
     public static <T> Publisher<T> just(T singleValue) {
-        return range(singleValue);
+        return from(singleValue);
     }
 
-    public static <T> Publisher<T> range(T... values) {
+    public static <T> Publisher<T> from(T... values) {
         return new Publisher<T>() {
+            private boolean interrupted = false;
+
             @Override
             public void subscribe(Subscriber<? super T> s) {
                 s.onSubscribe(new Subscription() {
+                    private int index = 0;
+
                     @Override
                     public void request(long n) {
-                        for (T value: values) {
-                            System.out.println("Publishers.range -> " + value);
+                        for (int i = index; i < values.length && i < n + index; i++) {
+                            T value = values[i];
+                            System.out.println("Publishers.from -> " + value);
                             s.onNext(value);
+                            if (interrupted) {
+                                return;
+                            }
                         }
                         s.onComplete();
                     }
 
                     @Override
-                    public void cancel() {}
+                    public void cancel() {
+                        interrupted = true;
+                    }
                 });
             }
         };
     }
 
-    public static <T, U> Publisher<T> map(Publisher<U> inputs, ThrowableFunction<U, T> f) {
-        return new Publisher<T>() {
+    public static <Input, Output> Publisher<Output> map(
+        Publisher<Input> inputs,
+        ThrowableFunction<Input, Output> f
+    ) {
+        return new Publisher<Output>() {
             @Override
-            public void subscribe(Subscriber<? super T> subscriber) {
-                inputs.subscribe(new Subscriber<U>() {
+            public void subscribe(Subscriber<? super Output> subscriber) {
+                inputs.subscribe(new Subscriber<Input>() {
                     @Override
                     public void onSubscribe(Subscription subscription) {
                         subscriber.onSubscribe(subscription);
                     }
 
                     @Override
-                    public void onNext(U filterReq) {
+                    public void onNext(Input input) {
                         try {
-                            T req = f.apply(filterReq);
-                            subscriber.onNext(req);
+                            Output output = f.apply(input);
+                            subscriber.onNext(output);
                         } catch (Throwable ex) {
                             subscriber.onError(ex);
                         }
@@ -72,6 +86,14 @@ public class Publishers {
                 });
             }
         };
+    }
+
+    public static <T> T toSingle(Publisher<T> publisher) throws InterruptedException {
+        List<T> data = toList(publisher);
+        if (data.size() != 1) {
+            throw new RuntimeException("Not a single value");
+        }
+        return data.get(0);
     }
 
     public static <T> List<T> toList(Publisher<T> publisher) throws InterruptedException {
