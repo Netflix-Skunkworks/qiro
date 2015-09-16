@@ -7,7 +7,10 @@ import org.reactivestreams.Subscription;
 import java.util.function.Supplier;
 
 public class Services {
-    public static Publisher<Double> ALWAYS_AVAILABLE = s -> s.onNext(1.0);
+    public static Publisher<Double> ALWAYS_AVAILABLE = s -> {
+        s.onNext(1.0);
+        s.onComplete();
+    };
     public static Supplier<Void> EMPTY_CLOSE_FN = () -> null;
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(ThrowableFunction<Req, Resp> fn) {
@@ -33,8 +36,11 @@ public class Services {
                     @Override
                     public void subscribe(Subscriber<? super Resp> subscriber) {
                         inputs.subscribe(new Subscriber<Req>() {
+                            private Subscription subscription;
+
                             @Override
                             public void onSubscribe(Subscription s) {
+                                subscription = s;
                                 subscriber.onSubscribe(s);
                             }
 
@@ -43,14 +49,15 @@ public class Services {
                                 try {
                                     Resp resp = fn.apply(input);
                                     subscriber.onNext(resp);
-                                } catch (io.xude.failures.Exception ex) {
-                                    subscriber.onError(ex);
+                                } catch (Throwable ex) {
+                                    onError(ex);
                                 }
                             }
 
                             @Override
                             public void onError(Throwable t) {
                                 subscriber.onError(t);
+                                subscription.cancel();
                             }
 
                             @Override

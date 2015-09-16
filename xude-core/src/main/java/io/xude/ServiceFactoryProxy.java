@@ -14,6 +14,11 @@ public class ServiceFactoryProxy<Request, Response> implements ServiceFactory<Re
     }
 
     @Override
+    public Publisher<Double> availability() {
+        return underlying.availability();
+    }
+
+    @Override
     public Publisher<Void> close() {
         return underlying.close();
     }

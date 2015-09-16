@@ -78,11 +78,46 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
         };
     }
 
+
+    @Override
+    public Publisher<Double> availability() {
+        return new Publisher<Double>() {
+            private double sum = 0.0;
+            private int count = 0;
+
+            @Override
+            public void subscribe(Subscriber<? super Double> subscriber) {
+                for (Service<Req, Resp> service: services) {
+                    service.availability().subscribe(new EmptySubscriber<Double>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                            s.request(1L);
+                        }
+
+                        @Override
+                        public void onNext(Double aDouble) {
+                            sum += aDouble;
+                            count += 1;
+                        }
+                    });
+                }
+                if (count != 0) {
+                    subscriber.onNext(sum / count);
+                } else {
+                    subscriber.onNext(0.0);
+                }
+                subscriber.onComplete();
+            }
+        };
+    }
+
     @Override
     public Publisher<Void> close() {
         return s -> {
             synchronized (RoundRobinBalancer.this) {
-                 services.forEach(Service::close);
+                services.forEach(svc ->
+                        svc.close().subscribe(new EmptySubscriber<>())
+                );
             }
         };
     }

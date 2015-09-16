@@ -99,6 +99,11 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
             }
 
             @Override
+            public Publisher<Double> availability() {
+                return other.availability();
+            }
+
+            @Override
             public Publisher<Void> close() {
                 return other.close();
             }

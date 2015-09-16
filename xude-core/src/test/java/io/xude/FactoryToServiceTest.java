@@ -9,7 +9,7 @@ public class FactoryToServiceTest {
     @Test(timeout = 10_000L)
     public void testBasicServiceFactory() throws InterruptedException {
 
-        ServiceFactory<Integer, String> factory0 = ServiceFactories.fromFunctions(
+        ServiceFactory<Integer, String> factory = ServiceFactories.fromFunctions(
             () -> Services.fromFunction(Object::toString),
             () -> {
                 assertTrue("You shouldn't close the ServiceFactory", false);
@@ -17,7 +17,6 @@ public class FactoryToServiceTest {
             }
         );
 
-        Service<Integer, String> service = new FactoryToService<>(factory0);
-        ServiceTest.testService(service);
+        ServiceTest.testService(factory.toService());
     }
 }
