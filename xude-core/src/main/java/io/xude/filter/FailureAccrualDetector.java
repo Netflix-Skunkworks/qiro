@@ -38,9 +38,29 @@ public class FailureAccrualDetector<Request, Response> implements ServiceFactory
         return new Publisher<Service<Request, Response>>() {
             @Override
             public void subscribe(Subscriber<? super Service<Request, Response>> subscriber) {
-                System.out.println("Subscribing to FailureAccrualDetector(SF) Service Publisher");
                 map(underlying.apply(), service -> new FailureAccrualService<>(service))
-                    .subscribe(subscriber);
+                    .subscribe(new Subscriber<Service<Request, Response>>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                            subscriber.onSubscribe(s);
+                        }
+
+                        @Override
+                        public void onNext(Service<Request, Response> svc) {
+                            subscriber.onNext(svc);
+                        }
+
+                        @Override
+                        public void onError(Throwable t) {
+                            subscriber.onError(t);
+                            markFailure();  // ServiceFactory failures also trigger markFailure
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            subscriber.onComplete();
+                        }
+                    });
             }
         };
     }
@@ -67,6 +87,7 @@ public class FailureAccrualDetector<Request, Response> implements ServiceFactory
                 if (deadSince > 0L) {
                     long elapse = System.currentTimeMillis() - deadSince;
                     if (elapse < markDeadForMs) {
+                        System.out.println("FailureAccrualDetector return 0.0 availability");
                         availabilitySubscriber.onNext(0.0);
                         availabilitySubscriber.onComplete();
                     } else {
