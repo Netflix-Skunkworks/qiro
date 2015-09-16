@@ -2,27 +2,25 @@ package io.xude.loadbalancing;
 
 import io.xude.Service;
 import io.xude.ServiceFactory;
-import io.xude.ServiceProxy;
+import io.xude.ServiceFactoryProxy;
 import io.xude.util.EmptySubscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.PriorityQueue;
 
 public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
-    final private PriorityQueue<WeightedService<Req, Resp>> queue;
+    final private PriorityQueue<WeightedServiceFactory<Req, Resp>> queue;
 
-    private class WeightedService<Req, Resp>
-        extends ServiceProxy<Req, Resp>
-        implements Comparable<WeightedService<Req, Resp>> {
+    private class WeightedServiceFactory<Req, Resp>
+        extends ServiceFactoryProxy<Req, Resp>
+        implements Comparable<WeightedServiceFactory<Req, Resp>> {
 
         private double load = 0.0;
         private double availabilityValue = 0.0;
 
-        WeightedService(Service<Req, Resp> underlying) {
+        WeightedServiceFactory(ServiceFactory<Req, Resp> underlying) {
             super(underlying);
         }
 
@@ -35,7 +33,6 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
         synchronized void increment() { load += 1; }
 
         synchronized double getLoad() {
-            // TODO: This must be synchronous, verify the hypothesis
             availability().subscribe(new EmptySubscriber<Double>() {
                 @Override
                 public void onNext(Double x) {
@@ -55,7 +52,7 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
         }
 
         @Override
-        public int compareTo(WeightedService<Req, Resp> other) {
+        public int compareTo(WeightedServiceFactory<Req, Resp> other) {
             return Double.compare(this.getLoad(), other.getLoad());
         }
     }
@@ -73,10 +70,9 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
                     @Override
                     public void onNext(Service<Req, Resp> service) {
-                        System.out.println("HeapBalancer: Creating service");
-                        WeightedService<Req, Resp> weightedService = new WeightedService<>(service);
+                        System.out.println("HeapBalancer: Storing ServiceFactory");
                         synchronized (HeapBalancer.this) {
-                            queue.add(weightedService);
+                            queue.add(new WeightedServiceFactory<>(factory));
                         }
                     }
                 });
@@ -86,17 +82,16 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
     @Override
     public Publisher<Service<Req, Resp>> apply() {
-        return s -> {
+        return subscriber -> {
             System.out.println("HeapBalancer.apply");
             synchronized (HeapBalancer.this) {
                 if (queue.isEmpty()) {
-                    s.onError(new Exception("No Server available in the Loadbalancer!"));
+                    subscriber.onError(new Exception("No Server available in the Loadbalancer!"));
                 } else {
-                    WeightedService<Req, Resp> service = queue.poll();
-                    service.increment();
-                    queue.offer(service);
-                    s.onNext(service);
-                    s.onComplete();
+                    WeightedServiceFactory<Req, Resp> factory = queue.poll();
+                    factory.increment();
+                    queue.offer(factory);
+                    factory.apply().subscribe(subscriber);
                 }
             }
         };
@@ -110,8 +105,8 @@ public class HeapBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
             @Override
             public void subscribe(Subscriber<? super Double> subscriber) {
-                for (Service<Req, Resp> service: queue) {
-                    service.availability().subscribe(new EmptySubscriber<Double>() {
+                for (ServiceFactory<Req, Resp> factory: queue) {
+                    factory.availability().subscribe(new EmptySubscriber<Double>() {
                         @Override
                         public void onSubscribe(Subscription s) {
                             s.request(1L);

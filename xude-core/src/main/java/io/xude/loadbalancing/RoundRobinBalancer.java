@@ -2,9 +2,7 @@ package io.xude.loadbalancing;
 
 import io.xude.Service;
 import io.xude.ServiceFactory;
-import io.xude.ServiceProxy;
 import io.xude.util.EmptySubscriber;
-import io.xude.util.Publishers;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -12,49 +10,18 @@ import org.reactivestreams.Subscription;
 import java.util.*;
 
 public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
-    private final List<Service<Req, Resp>> services;
+    private final List<ServiceFactory<Req, Resp>> factories;
     private int i;
 
     public RoundRobinBalancer(Publisher<ServiceFactory<Req, Resp>> factories) {
-        services = new ArrayList<>();
-        i = 0;
-        factories.subscribe(new Subscriber<ServiceFactory<Req, Resp>>() {
-            int j = 0;
-
-            @Override
-            public void onSubscribe(Subscription s) {
-                s.request(Long.MAX_VALUE);
-            }
-
+        this.factories = new ArrayList<>();
+        factories.subscribe(new EmptySubscriber<ServiceFactory<Req, Resp>>() {
             @Override
             public void onNext(ServiceFactory<Req, Resp> factory) {
-                factory.apply().subscribe(new EmptySubscriber<Service<Req, Resp>>() {
-                    @Override
-                    public void onNext(Service<Req, Resp> service) {
-                        System.out.println("RoundRobinBalancer: Eager creation of service" + j);
-                        final ServiceProxy<Req, Resp> proxy = new ServiceProxy<Req, Resp>(service) {
-                            private int jj = j++;
-
-                            @Override
-                            public Publisher<Void> close() {
-                                return s -> {
-                                    System.out.println("Service" + jj + " load DOWN");
-                                    s.onComplete();
-                                };
-                            }
-                        };
-                        synchronized (RoundRobinBalancer.this) {
-                            services.add(proxy);
-                        }
-                    }
-                });
+                synchronized (RoundRobinBalancer.this) {
+                    RoundRobinBalancer.this.factories.add(factory);
+                }
             }
-
-            @Override
-            public void onError(Throwable t) {}
-
-            @Override
-            public void onComplete() {}
         });
     }
 
@@ -62,16 +29,14 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
     public Publisher<Service<Req, Resp>> apply() {
         return new Publisher<Service<Req, Resp>>() {
             @Override
-            public void subscribe(Subscriber<? super Service<Req, Resp>> s) {
+            public void subscribe(Subscriber<? super Service<Req, Resp>> subscriber) {
                 synchronized (RoundRobinBalancer.this) {
-                    if (services.isEmpty()) {
-                        s.onError(new Exception("No Server available in the Loadbalancer!"));
+                    if (factories.isEmpty()) {
+                        subscriber.onError(new Exception("No Server available in the Loadbalancer!"));
                     } else {
-                        i = (i + 1) % services.size();
-                        Service<Req, Resp> service = services.get(i);
-                        System.out.println("Service" + i + " load UP");;
-                        s.onNext(service);
-                        s.onComplete();
+                        i = (i + 1) % factories.size();
+                        ServiceFactory<Req, Resp> factory = factories.get(i);
+                        factory.apply().subscribe(subscriber);
                     }
                 }
             }
@@ -87,7 +52,7 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
 
             @Override
             public void subscribe(Subscriber<? super Double> subscriber) {
-                for (Service<Req, Resp> service: services) {
+                for (ServiceFactory<Req, Resp> service: factories) {
                     service.availability().subscribe(new EmptySubscriber<Double>() {
                         @Override
                         public void onSubscribe(Subscription s) {
@@ -115,7 +80,7 @@ public class RoundRobinBalancer<Req, Resp> implements Loadbalancer<Req, Resp> {
     public Publisher<Void> close() {
         return s -> {
             synchronized (RoundRobinBalancer.this) {
-                services.forEach(svc ->
+                factories.forEach(svc ->
                         svc.close().subscribe(new EmptySubscriber<>())
                 );
             }
