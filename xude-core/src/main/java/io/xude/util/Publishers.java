@@ -20,6 +20,7 @@ public class Publishers {
         return from(singleValue);
     }
 
+    @SafeVarargs
     public static <T> Publisher<T> from(T... values) {
         return new Publisher<T>() {
             private boolean interrupted = false;
