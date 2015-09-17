@@ -5,9 +5,17 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 public class ThreadedService<Req, Resp> implements Service<Req, Resp> {
+    private static ExecutorService EXECUTOR = Executors.newFixedThreadPool(8, runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        return thread;
+    });
+
     private Function<Req, Resp> function;
 
     public ThreadedService(Function<Req, Resp> function) {
@@ -19,33 +27,30 @@ public class ThreadedService<Req, Resp> implements Service<Req, Resp> {
         return new Publisher<Resp>() {
             @Override
             public void subscribe(Subscriber<? super Resp> subscriber) {
-                new Thread(ThreadedService.this.toString()) {
-                    @Override
-                    public void run() {
-                        inputs.subscribe(new Subscriber<Req>() {
-                            @Override
-                            public void onSubscribe(Subscription s) {
-                                subscriber.onSubscribe(s);
-                            }
+                EXECUTOR.submit(() -> {
+                    inputs.subscribe(new Subscriber<Req>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                            subscriber.onSubscribe(s);
+                        }
 
-                            @Override
-                            public void onNext(Req req) {
-                                Resp resp = function.apply(req);
-                                subscriber.onNext(resp);
-                            }
+                        @Override
+                        public void onNext(Req req) {
+                            Resp resp = function.apply(req);
+                            subscriber.onNext(resp);
+                        }
 
-                            @Override
-                            public void onError(Throwable t) {
-                                subscriber.onError(t);
-                            }
+                        @Override
+                        public void onError(Throwable t) {
+                            subscriber.onError(t);
+                        }
 
-                            @Override
-                            public void onComplete() {
-                                subscriber.onComplete();
-                            }
-                        });
-                    }
-                }.start();
+                        @Override
+                        public void onComplete() {
+                            subscriber.onComplete();
+                        }
+                    });
+                });
             }
         };
     }
