@@ -3,7 +3,7 @@ package io.xude;
 import org.reactivestreams.Publisher;
 
 public class ServiceFactoryProxy<Request, Response> implements ServiceFactory<Request, Response> {
-    private ServiceFactory<Request, Response> underlying;
+    protected ServiceFactory<Request, Response> underlying;
 
     public ServiceFactoryProxy(ServiceFactory<Request, Response> underlying) {
         this.underlying = underlying;
