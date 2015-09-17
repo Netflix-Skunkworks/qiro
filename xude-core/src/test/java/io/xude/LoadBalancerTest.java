@@ -1,6 +1,7 @@
 package io.xude;
 
 import io.xude.loadbalancing.LeastLoadedBalancer;
+import io.xude.loadbalancing.P2CBalancer;
 import io.xude.loadbalancing.RoundRobinBalancer;
 import io.xude.testing.TestingService;
 import org.junit.Test;
@@ -101,6 +102,18 @@ public class LoadBalancerTest {
 
     @Test(timeout = 10_000L)
     public void testLeastLoadedLoadBalancer() throws InterruptedException {
+        testMoreFairBalancing(LeastLoadedBalancer::new);
+    }
+
+    @Test(timeout = 10_000L)
+    public void testP2CBalancer() throws InterruptedException {
+        // when the number of factories is 2, the P2C should behave exactly like LeastLoaded
+        testMoreFairBalancing(P2CBalancer::new);
+    }
+
+    private void testMoreFairBalancing(
+        Function<Publisher<ServiceFactory<Integer, String>>, ServiceFactory<Integer, String>> balancerFactory
+    ) throws InterruptedException {
         // The goal of this test is to ensure that the load balancer always select
         // the least loaded ServiceFactory (or one of the least loaded when
         // there're more than one with the minimum load)
@@ -132,7 +145,7 @@ public class LoadBalancerTest {
         );
 
         Service<Integer, String> service =
-            new LeastLoadedBalancer<>(from(factory0, factory1)).toService();
+            balancerFactory.apply(from(factory0, factory1)).toService();
 
         service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
         service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));
