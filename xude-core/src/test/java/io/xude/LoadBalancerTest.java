@@ -9,7 +9,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -26,9 +28,14 @@ public class LoadBalancerTest {
         ServiceFactory<Integer, String> factory0 = createFactory("0", c0);
         AtomicInteger c1 = new AtomicInteger(0);
         ServiceFactory<Integer, String> factory1 = createFactory("1", c1);
+        Set<ServiceFactory<Integer, String>> factories = new HashSet<>();
+        factories.add(factory0);
+        factories.add(factory1);
 
         Service<Integer, String> service =
-            new RoundRobinBalancer<>(from(factory0, factory1)).toService();
+            new RoundRobinBalancer<>(from(factories)).toService();
+
+        service.availability().subscribe(new LoggerSubscriber<>("availability"));
 
         List<String> strings1 = toList(service.apply(from(1, 2)));
         List<String> strings2 = toList(service.apply(from(3, 4)));
@@ -64,7 +71,7 @@ public class LoadBalancerTest {
     }
 
     private void testFairBalancing(
-        Function<Publisher<ServiceFactory<Integer, String>>, ServiceFactory<Integer, String>> balancerFactory
+        Function<Publisher<Set<ServiceFactory<Integer, String>>>, ServiceFactory<Integer, String>> balancerFactory
     ) throws InterruptedException {
         TestingService<Integer, String> service0 =
             new TestingService<>(i -> i.toString() + " from service0");
@@ -79,8 +86,11 @@ public class LoadBalancerTest {
             () -> service1,
             () -> null
         );
+        Set<ServiceFactory<Integer, String>> factories = new HashSet<>();
+        factories.add(factory0);
+        factories.add(factory1);
 
-        ServiceFactory<Integer, String> balancer = balancerFactory.apply(from(factory0, factory1));
+        ServiceFactory<Integer, String> balancer = balancerFactory.apply(from(factories));
         Service<Integer, String> service = balancer.toService();
 
         service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
@@ -110,7 +120,7 @@ public class LoadBalancerTest {
     }
 
     private void testMoreFairBalancing(
-        Function<Publisher<ServiceFactory<Integer, String>>, ServiceFactory<Integer, String>> balancerFactory
+        Function<Publisher<Set<ServiceFactory<Integer, String>>>, ServiceFactory<Integer, String>> balancerFactory
     ) throws InterruptedException {
         // The goal of this test is to ensure that the load balancer always select
         // the least loaded ServiceFactory (or one of the least loaded when
@@ -141,9 +151,12 @@ public class LoadBalancerTest {
             () -> service1,
             () -> null
         );
+        Set<ServiceFactory<Integer, String>> factories = new HashSet<>();
+        factories.add(factory0);
+        factories.add(factory1);
 
         Service<Integer, String> service =
-            balancerFactory.apply(from(factory0, factory1)).toService();
+            balancerFactory.apply(from(factories)).toService();
 
         service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
         service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));

@@ -7,19 +7,36 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
-    private final List<ServiceFactory<Req, Resp>> factories;
+    private List<ServiceFactory<Req, Resp>> factories;
     private int i;
 
-    public RoundRobinBalancer(Publisher<ServiceFactory<Req, Resp>> factories) {
+    public RoundRobinBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factorySet) {
         this.factories = new ArrayList<>();
-        factories.subscribe(new EmptySubscriber<ServiceFactory<Req, Resp>>() {
+        factorySet.subscribe(new EmptySubscriber<Set<ServiceFactory<Req, Resp>>>() {
             @Override
-            public void onNext(ServiceFactory<Req, Resp> factory) {
+            public void onNext(Set<ServiceFactory<Req, Resp>> set) {
                 synchronized (RoundRobinBalancer.this) {
-                    RoundRobinBalancer.this.factories.add(factory);
+                    System.out.println("RoundRobinBalancer: Adding factories " + set);
+                    Set<ServiceFactory<Req, Resp>> current = new HashSet<>(factories);
+                    factories.clear();
+                    for (ServiceFactory<Req, Resp> factory: current) {
+                        if (!set.contains(factory)) {
+                            factory.close().subscribe(new EmptySubscriber<>());
+                        } else {
+                            factories.add(factory);
+                        }
+                    }
+                    for (ServiceFactory<Req, Resp> factory: set) {
+                        if (!current.contains(factory)) {
+                            factories.add(factory);
+                        }
+                    }
                 }
             }
         });

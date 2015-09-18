@@ -7,22 +7,33 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class LeastLoadedBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
 
     final private List<WeightedServiceFactory<Req, Resp>> buffer;
 
-    public LeastLoadedBalancer(Publisher<ServiceFactory<Req, Resp>> factories) {
+    public LeastLoadedBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factorySet) {
         this.buffer = new ArrayList<>();
-        factories.subscribe(new EmptySubscriber<ServiceFactory<Req, Resp>>() {
+        factorySet.subscribe(new EmptySubscriber<Set<ServiceFactory<Req, Resp>>>() {
             @Override
-            public void onNext(ServiceFactory<Req, Resp> factory) {
+            public void onNext(Set<ServiceFactory<Req, Resp>> set) {
                 System.out.println("LeastLoadedBalancer: Storing ServiceFactory");
                 synchronized (LeastLoadedBalancer.this) {
-                    buffer.add(new WeightedServiceFactory<>(factory));
+                    Set<ServiceFactory<Req, Resp>> current = new HashSet<>(buffer);
+                    buffer.clear();
+                    for (ServiceFactory<Req, Resp> factory: current) {
+                        if (!set.contains(factory)) {
+                            factory.close().subscribe(new EmptySubscriber<>());
+                        } else {
+                            buffer.add(new WeightedServiceFactory<>(factory));
+                        }
+                    }
+                    for (ServiceFactory<Req, Resp> factory: set) {
+                        if (!current.contains(factory)) {
+                            buffer.add(new WeightedServiceFactory<>(factory));
+                        }
+                    }
                 }
             }
         });

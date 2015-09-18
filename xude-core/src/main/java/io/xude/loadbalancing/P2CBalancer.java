@@ -7,22 +7,33 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class P2CBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
     final private List<WeightedServiceFactory<Req, Resp>> buffer;
 
-    public P2CBalancer(Publisher<ServiceFactory<Req, Resp>> factories) {
+    public P2CBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factories) {
         this.buffer = new ArrayList<>();
-        factories.subscribe(new EmptySubscriber<ServiceFactory<Req, Resp>>() {
+        factories.subscribe(new EmptySubscriber<Set<ServiceFactory<Req, Resp>>>() {
             @Override
-            public void onNext(ServiceFactory<Req, Resp> factory) {
+            public void onNext(Set<ServiceFactory<Req, Resp>> set) {
                 System.out.println("P2CBalancer: Storing ServiceFactory");
                 synchronized (P2CBalancer.this) {
-                    buffer.add(new WeightedServiceFactory<>(factory));
+                    Set<ServiceFactory<Req, Resp>> current = new HashSet<>(buffer);
+                    buffer.clear();
+                    for (ServiceFactory<Req, Resp> factory: current) {
+                        if (!set.contains(factory)) {
+                            factory.close().subscribe(new EmptySubscriber<>());
+                        } else {
+                            buffer.add(new WeightedServiceFactory<>(factory));
+                        }
+                    }
+                    for (ServiceFactory<Req, Resp> factory: set) {
+                        if (!current.contains(factory)) {
+                            buffer.add(new WeightedServiceFactory<>(factory));
+                        }
+                    }
                 }
             }
         });

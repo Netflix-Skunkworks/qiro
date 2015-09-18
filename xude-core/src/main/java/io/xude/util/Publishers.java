@@ -114,6 +114,7 @@ public class Publishers {
 
             @Override
             public void onError(Throwable t) {
+                System.out.println("toList received error " + t);
                 latch.countDown();
             }
 
