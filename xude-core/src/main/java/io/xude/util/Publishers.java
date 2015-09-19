@@ -1,6 +1,5 @@
 package io.xude.util;
 
-import io.xude.ThrowableBiFunction;
 import io.xude.ThrowableFunction;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -32,15 +31,56 @@ public class Publishers {
 
                     @Override
                     public void request(long n) {
-                        for (int i = index; i < values.length && i < n + index; i++) {
-                            T value = values[i];
+                        for (; index < values.length && index < n; index++) {
+                            T value = values[index];
                             System.out.println("Publishers.from -> " + value);
                             s.onNext(value);
                             if (interrupted) {
                                 return;
                             }
                         }
-                        s.onComplete();
+                        if (index == values.length) {
+                            s.onComplete();
+                        }
+                    }
+
+                    @Override
+                    public void cancel() {
+                        interrupted = true;
+                    }
+                });
+            }
+        };
+    }
+
+    public static Publisher<Integer> range(int from, int to) {
+        return new Publisher<Integer>() {
+            private boolean interrupted = false;
+
+            @Override
+            public void subscribe(Subscriber<? super Integer> s) {
+                s.onSubscribe(new Subscription() {
+                    private int index = from;
+                    private int limit = from;
+                    private boolean running = false;
+
+                    @Override
+                    public void request(long n) {
+                        limit += n;
+                        if (running) {
+                            return;
+                        }
+                        running = true;
+                        for (; index < limit && index < to; index++) {
+                            s.onNext(index);
+                            if (interrupted) {
+                                return;
+                            }
+                        }
+                        if (index == to) {
+                            s.onComplete();
+                        }
+                        running = false;
                     }
 
                     @Override
@@ -102,13 +142,23 @@ public class Publishers {
         CountDownLatch latch = new CountDownLatch(1);
 
         publisher.subscribe(new Subscriber<T>() {
+            private long batchSize = 128L;
+            private Subscription subscribtion;
+            private int counter = 0;
+
             @Override
             public void onSubscribe(Subscription s) {
-                s.request(Long.MAX_VALUE);
+                this.subscribtion = s;
+                s.request(batchSize);
             }
 
             @Override
             public void onNext(T t) {
+                counter += 1;
+                if (counter > batchSize / 2) {
+                    counter = 0;
+                    subscribtion.request(batchSize / 2);
+                }
                 result.add(t);
             }
 
