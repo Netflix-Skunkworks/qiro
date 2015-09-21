@@ -2,10 +2,9 @@ package io.xude.loadbalancing;
 
 import io.xude.Service;
 import io.xude.ServiceFactory;
+import io.xude.util.Availabilities;
 import io.xude.util.EmptySubscriber;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 import java.util.*;
 
@@ -88,36 +87,7 @@ public class LeastLoadedBalancer<Req, Resp> implements ServiceFactory<Req,Resp> 
 
     @Override
     public Publisher<Double> availability() {
-        return new Publisher<Double>() {
-            private double sum = 0.0;
-            private int count = 0;
-
-            @Override
-            public void subscribe(Subscriber<? super Double> subscriber) {
-                synchronized (LeastLoadedBalancer.this) {
-                    for (ServiceFactory<Req, Resp> factory : buffer) {
-                        factory.availability().subscribe(new EmptySubscriber<Double>() {
-                            @Override
-                            public void onSubscribe(Subscription s) {
-                                s.request(1L);
-                            }
-
-                            @Override
-                            public void onNext(Double aDouble) {
-                                sum += aDouble;
-                                count += 1;
-                            }
-                        });
-                    }
-                }
-                if (count != 0) {
-                    subscriber.onNext(sum / count);
-                } else {
-                    subscriber.onNext(0.0);
-                }
-                subscriber.onComplete();
-            }
-        };
+        return Availabilities.avgOfServiceFactories(buffer, LeastLoadedBalancer.this);
     }
 
     @Override
