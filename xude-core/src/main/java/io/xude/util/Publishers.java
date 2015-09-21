@@ -129,6 +129,45 @@ public class Publishers {
         };
     }
 
+    public static <T> Publisher<List<T>> concat(List<Publisher<T>> inputs) {
+        return new Publisher<List<T>>() {
+            private List<T> buffer = new ArrayList<>();
+
+            @Override
+            public void subscribe(Subscriber<? super List<T>> subscriber) {
+                for (int i = 0; i < inputs.size(); i++) {
+                    Publisher<T> pub = inputs.get(i);
+                    final boolean last = i == inputs.size() - 1;
+                    pub.subscribe(new Subscriber<T>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                            subscriber.onSubscribe(s);
+                        }
+
+                        @Override
+                        public void onNext(T t) {
+                            buffer.add(t);
+                        }
+
+                        @Override
+                        public void onError(Throwable t) {
+                            subscriber.onError(t);
+                            // TODO: Should break the for loop
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            if (last) {
+                                subscriber.onNext(buffer);
+                                subscriber.onComplete();
+                            }
+                        }
+                    });
+                }
+            }
+        };
+    }
+
     public static <T> T toSingle(Publisher<T> publisher) throws InterruptedException {
         List<T> data = toList(publisher);
         if (data.size() != 1) {
