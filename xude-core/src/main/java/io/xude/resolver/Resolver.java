@@ -1,9 +1,14 @@
 package io.xude.resolver;
 
+import io.xude.Service;
+import io.xude.ServiceFactory;
+
 import org.reactivestreams.Publisher;
 
 import java.net.SocketAddress;
 import java.net.URL;
+import java.util.Set;
+import java.util.function.Function;
 
 /**
  * A Resolver is responsible for converting an abstract name into a more meaningful
@@ -12,36 +17,13 @@ import java.net.URL;
  * This process is asynchronous and the resolution may change over time.
  */
 public interface Resolver {
-    public interface Event {
-        public SocketAddress getAddress();
+    public Publisher<Set<SocketAddress>> resolve(URL url);
+
+    default <Req, Resp>
+    Publisher<Set<ServiceFactory<Req, Resp>>> resolveFactory(
+        URL url,
+        Function<SocketAddress, Service<Req, Resp>> fn
+    ) {
+        return Resolvers.resolveFactory(resolve(url), fn);
     }
-
-    public class Addition implements Event {
-        private SocketAddress address;
-        public Addition(SocketAddress addr) {
-            this.address = addr;
-        }
-        public SocketAddress getAddress() {
-            return address;
-        }
-        public String toString() {
-            return "Addition(" + address + ")";
-        }
-    }
-
-    public class Removal implements Event {
-        private SocketAddress address;
-        public Removal(SocketAddress addr) {
-            this.address = addr;
-        }
-        public SocketAddress getAddress() {
-            return address;
-        }
-        public String toString() {
-            return "Removal(" + address + ")";
-        }
-
-    }
-
-    public Publisher<Event> resolve(URL url);
 }

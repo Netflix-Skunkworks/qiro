@@ -28,20 +28,19 @@ public class DnsResolver implements Resolver {
     }
 
     @Override
-    public Publisher<Event> resolve(URL url) {
-        return new Publisher<Event>() {
+    public Publisher<Set<SocketAddress>> resolve(URL url) {
+        return new Publisher<Set<SocketAddress>>() {
             @Override
-            public void subscribe(Subscriber<? super Event> s) {
+            public void subscribe(Subscriber<? super Set<SocketAddress>> subscriber) {
                 String protocol = url.getProtocol();
                 if (!protocol.equals(PROTOCOL_NAME)) {
                     String message = "'" + protocol + "' isn't supported by the DnsResolver\n";
                     message += "URL should be in the form 'dns://hostname:port,hostname2:port2'";
-                    s.onError(new MalformedURLException(message));
+                    subscriber.onError(new MalformedURLException(message));
                 } else {
-                    // TODO: fix that, make it asynchronous
-                    resolveDns(url.getHost()).forEach(socketAddress -> {
-                        s.onNext(new Resolver.Addition(socketAddress));
-                    });
+                    // TODO: fix that, make it asynchronous and check periodically
+                    Set<SocketAddress> addresses = new HashSet<>(resolveDns(url.getHost()));
+                    subscriber.onNext(addresses);
                 }
             }
         };
