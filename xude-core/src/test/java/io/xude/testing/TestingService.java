@@ -91,10 +91,12 @@ public class TestingService<Req, Resp> implements Service<Req, Resp> {
 
     public synchronized void complete() {
         streamInfos.forEach(StreamInfo::complete);
+        streamInfos.clear();
     }
 
     public synchronized void complete(int streamId) {
         streamInfos.get(streamId).complete();
+        streamInfos.remove(streamId);
     }
 
     @Override

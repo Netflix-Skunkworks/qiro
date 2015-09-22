@@ -4,10 +4,9 @@ import io.xude.loadbalancing.LeastLoadedBalancer;
 import io.xude.loadbalancing.P2CBalancer;
 import io.xude.loadbalancing.RoundRobinBalancer;
 import io.xude.testing.TestingService;
+import io.xude.testing.LoggerSubscriber;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 import java.util.HashSet;
 import java.util.List;
@@ -185,33 +184,5 @@ public class LoadBalancerTest {
         // loads: [svc0: 1, svc1: 0]
         assertEquals(1, service0.queueSize());
         assertEquals(0, service1.queueSize());
-    }
-
-    class LoggerSubscriber<T> implements Subscriber<T> {
-        private String name;
-
-        LoggerSubscriber(String name){
-            this.name = name;
-        }
-
-        @Override
-        public void onSubscribe(Subscription s) {
-            s.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(T t) {
-            System.out.println("Received " + t);
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            t.printStackTrace();
-        }
-
-        @Override
-        public void onComplete() {
-            System.out.println(name + " is complete!");
-        }
     }
 }
