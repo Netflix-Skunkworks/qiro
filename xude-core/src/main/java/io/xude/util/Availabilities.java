@@ -7,6 +7,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class Availabilities {
@@ -66,7 +67,7 @@ public class Availabilities {
 
     public static <Req, Resp>
     Publisher<Double> avgOfServices(
-        List<? extends Service<Req, Resp>> services,
+        Collection<? extends Service<Req, Resp>> services,
         Object monitor
     ) {
         return new Publisher<Double>() {
@@ -88,8 +89,29 @@ public class Availabilities {
     }
 
     public static <Req, Resp>
+    Publisher<Double> avgOfServices(
+        Collection<? extends Service<Req, Resp>> services
+    ) {
+        return new Publisher<Double>() {
+            @Override
+            public void subscribe(Subscriber<? super Double> subscriber) {
+                if (services.isEmpty()) {
+                    UNAVAILABLE.subscribe(subscriber);
+                } else {
+                    List<Publisher<Double>> availabilities = new ArrayList<>();
+                    for (Service<Req, Resp> service : services) {
+                        availabilities.add(service.availability());
+                    }
+                    avgOf(availabilities, availabilities).subscribe(subscriber);
+                }
+            }
+        };
+    }
+
+
+    public static <Req, Resp>
     Publisher<Double> avgOfServiceFactories(
-        List<? extends ServiceFactory<Req, Resp>> factories,
+        Collection<? extends ServiceFactory<Req, Resp>> factories,
         Object monitor
     ) {
         return new Publisher<Double>() {
