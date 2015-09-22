@@ -18,7 +18,7 @@ buildscript {
     dependencies { classpath 'com.netflix.nebula:gradle-rxjava-project-plugin:2.+' }
 }
 
-description = 'Xude Dude!'
+description = 'Qiro'
 
 apply plugin: 'rxjava-project'
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-rootProject.name='xude'
-include 'xude-core'
-include 'xude-reactivesocket'
+rootProject.name='qiro'
+include 'qiro-core'
+include 'qiro-reactivesocket'
 

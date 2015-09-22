@@ -1,11 +1,12 @@
-# Xude
+# Qiro
 
-Xude is an agnostic communication library supporting multiple interaction models
+Qiro is an agnostic communication library supporting multiple interaction models
 (fire-and-forget, request-response, request-stream, subscription, channel).
 
 ## Build and Binaries
 
-<a href='https://travis-ci.org/xude/xude/builds'><img src='https://travis-ci.org/xude/xude.svg?branch=master'></a>
+<a href='https://travis-ci.org/qiro/qiro/builds'><img src='https://travis-ci.org/qiro/qiro
+.svg?branch=master'></a>
 
 Snapshots are available via JFrog.
 
@@ -17,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    compile 'io.xude:xude-core:0.0.1-SNAPSHOT'
+    compile 'io.qiro:qiro-core:0.0.1-SNAPSHOT'
 }
 ```
 
@@ -26,7 +27,8 @@ No releases to Maven Central or JCenter have occurred yet.
 
 ## Bugs and Feedback
 
-For bugs, questions and discussions please use the [Github Issues](https://github.com/ReactiveSocket/reactivesocket-java/issues).
+For bugs, questions and discussions please use the 
+[Github Issues](https://github.com/qiro/qiro/issues).
 
 
 ## LICENSE
