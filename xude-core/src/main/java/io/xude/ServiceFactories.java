@@ -1,9 +1,15 @@
 package io.xude;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class ServiceFactories {
+
+    private static List<Service<Object, Object>> services;
 
     public static <Request, Response> ServiceFactory<Request, Response>
     fromFunctions(
@@ -44,6 +50,38 @@ public class ServiceFactories {
                     s.onNext(closeFn.get());
                     s.onComplete();
                 };
+            }
+        };
+    }
+
+    @SafeVarargs
+    public static <Request, Response> ServiceFactory<Request, Response>
+    roundRobin(Service<Request, Response>... services) {
+        return roundRobin(Arrays.asList(services));
+    }
+
+    public static <Request, Response> ServiceFactory<Request, Response>
+    roundRobin(List<Service<Request, Response>> services) {
+        return new ServiceFactory<Request, Response>() {
+            private int i = 0;
+
+            @Override
+            public Publisher<Service<Request, Response>> apply() {
+                return s -> {
+                    s.onNext(services.get(i % services.size()));
+                    s.onComplete();
+                    i += 1;
+                };
+            }
+
+            @Override
+            public Publisher<Double> availability() {
+                return null;
+            }
+
+            @Override
+            public Publisher<Void> close() {
+                return null;
             }
         };
     }
