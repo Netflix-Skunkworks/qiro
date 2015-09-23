@@ -56,10 +56,20 @@ public class P2CBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
                         selectedFactory = buffer.get(0);
                     } else {
                         int n = buffer.size();
-                        int a = rng.nextInt(n);
-                        int b = rng.nextInt(n - 1);
-                        if (b >= a) {
-                            b = b + 1;
+                        int i = 0;
+                        int a = 0;
+                        int b = 0;
+                        while (i < 10) {
+                            a = rng.nextInt(n);
+                            b = rng.nextInt(n - 1);
+                            if (b >= a) {
+                                b = b + 1;
+                            }
+                            if (buffer.get(a).availability() != 0.0
+                                && buffer.get(b).availability() != 0.0) {
+                                break;
+                            }
+                            i += 1;
                         }
                         System.out.println("P2CBalancer: choosing between "
                             + "svc(i:" + a + " load:" + buffer.get(a).getLoad()
@@ -75,27 +85,7 @@ public class P2CBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
                 }
                 if (selectedFactory != null) {
                     selectedFactory.increment();
-                    selectedFactory.apply().subscribe(new Subscriber<Service<Req, Resp>>() {
-                        @Override
-                        public void onSubscribe(Subscription s) {
-                            subscriber.onSubscribe(s);
-                        }
-
-                        @Override
-                        public void onNext(Service<Req, Resp> service) {
-                            subscriber.onNext(service);
-                        }
-
-                        @Override
-                        public void onError(Throwable t) {
-                            subscriber.onError(t);
-                        }
-
-                        @Override
-                        public void onComplete() {
-                            subscriber.onComplete();
-                        }
-                    });
+                    selectedFactory.apply().subscribe(subscriber);
                 }
             }
         };
