@@ -26,9 +26,11 @@ public class TestingService<Req, Resp> implements Service<Req, Resp> {
         }
 
         synchronized void respond() {
-            Req request = requests.pollFirst();
-            Resp response = serviceFn.apply(request);
-            subscriber.onNext(response);
+            if (!requests.isEmpty()) {
+                Req request = requests.pollFirst();
+                Resp response = serviceFn.apply(request);
+                subscriber.onNext(response);
+            }
         }
 
         synchronized void complete() {
@@ -90,13 +92,22 @@ public class TestingService<Req, Resp> implements Service<Req, Resp> {
     }
 
     public synchronized void complete() {
-        streamInfos.forEach(StreamInfo::complete);
-        streamInfos.clear();
+        while (!streamInfos.isEmpty()) {
+            StreamInfo info = streamInfos.remove(0);
+            info.complete();
+        }
     }
 
     public synchronized void complete(int streamId) {
-        streamInfos.get(streamId).complete();
-        streamInfos.remove(streamId);
+        streamInfos.remove(streamId).complete();
+    }
+
+    public synchronized boolean isOpen() {
+        return open;
+    }
+
+    public synchronized boolean isClosed() {
+        return !open;
     }
 
     @Override

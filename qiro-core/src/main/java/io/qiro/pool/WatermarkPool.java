@@ -11,21 +11,24 @@ import org.reactivestreams.Subscription;
 
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
     private final int low;
     private final int high;
+    private final int maxBuffer;
     private final ServiceFactory<Req, Resp> underlying;
     private final Deque<Service<Req, Resp>> queue;
-    private AtomicInteger createdServices;
+    private final Deque<Subscriber<? super Service<Req, Resp>>> waiters;
+    private int createdServices;
 
-    public WatermarkPool(int low, int high, ServiceFactory<Req, Resp> underlying) {
+    public WatermarkPool(int low, int high, int maxBuffer, ServiceFactory<Req, Resp> underlying) {
         this.low = low;
         this.high = high;
+        this.maxBuffer = maxBuffer;
         this.underlying = underlying;
         queue = new ConcurrentLinkedDeque<>();
-        createdServices = new AtomicInteger(0);
+        waiters = new ConcurrentLinkedDeque<>();
+        createdServices = 0;
     }
 
     @Override
@@ -33,21 +36,21 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
         return new Publisher<Service<Req, Resp>>() {
             @Override
             public void subscribe(Subscriber<? super Service<Req, Resp>> subscriber) {
-                // try to grab the `right` to create a Service
                 System.out.println("WatermarkPool: subscribing createdServices:" +
-                    createdServices.get() + ", queue:" + queue);
-                final boolean creationGranted = createdServices.incrementAndGet() <= high;
-                Service<Req, Resp> service = queue.pollFirst();
-                if (service != null) {
-                    subscriber.onNext(service);
-                    // if a service was available, just return the `right`
-                    createdServices.decrementAndGet();
-                } else if (creationGranted) {
-                    createAndPublishService(subscriber);
-                } else {
-                    subscriber.onError(new java.lang.Exception(
-                        "WatermarkPool: Max Capacity (" + high + ")"));
-                    createdServices.decrementAndGet();
+                    createdServices + ", queue:" + queue + ", waiters:" + waiters);
+                synchronized (WatermarkPool.this) {
+                    Service<Req, Resp> service = queue.pollFirst();
+                    if (service != null) {
+                        subscriber.onNext(service);
+                    } else if (createdServices < high) {
+                        createdServices += 1;
+                        createAndPublishService(subscriber);
+                    } else if (waiters.size() >= maxBuffer) {
+                        subscriber.onError(new java.lang.Exception(
+                            "WatermarkPool: Max Capacity (" + high + ")"));
+                    } else {
+                        waiters.add(subscriber);
+                    }
                 }
             }
         };
@@ -66,13 +69,19 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
                     @Override
                     public Publisher<Void> close() {
                         return subscriber -> {
-                            int count = createdServices.decrementAndGet();
-                            if (count > low) {
-                                underlying.close().subscribe(subscriber);
-                            } else {
-                                System.out.println("WatermarkPool: moving svc " +
-                                    this + " to the queue");
-                                queue.addLast(this);
+                            synchronized (WatermarkPool.this) {
+                                if (!waiters.isEmpty()) {
+                                    Subscriber<? super Service<Req, Resp>> waitingSubscriber =
+                                        waiters.pollFirst();
+                                    waitingSubscriber.onNext(this);
+                                } else if (createdServices > low) {
+                                    createdServices -= 1;
+                                    underlying.close().subscribe(subscriber);
+                                } else {
+                                    System.out.println("WatermarkPool: moving svc " +
+                                        this + " to the queue");
+                                    queue.addLast(this);
+                                }
                             }
                         };
                     }
@@ -101,7 +110,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
     @Override
     public Publisher<Void> close() {
         return subscriber -> {
-            createdServices.addAndGet(high);
+            createdServices = 2 * high;
             queue.forEach(svc -> svc.close().subscribe(new EmptySubscriber<>()));
             subscriber.onNext(null);
             subscriber.onComplete();

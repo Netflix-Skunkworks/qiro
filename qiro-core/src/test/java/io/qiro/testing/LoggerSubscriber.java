@@ -5,9 +5,13 @@ import org.reactivestreams.Subscription;
 
 public class LoggerSubscriber<T> implements Subscriber<T> {
     private String name;
+    private boolean completed;
+    private boolean error;
 
     public LoggerSubscriber(String name) {
         this.name = name;
+        this.completed = false;
+        this.error = false;
     }
 
     @Override
@@ -23,11 +27,20 @@ public class LoggerSubscriber<T> implements Subscriber<T> {
     @Override
     public void onError(Throwable t) {
         System.out.println(name + " received exception " + t);
-//        t.printStackTrace();
+        error = true;
     }
 
     @Override
     public void onComplete() {
         System.out.println(name + " is complete!");
+        completed = true;
+    }
+
+    public boolean isComplete() {
+        return completed;
+    }
+
+    public boolean isError() {
+        return error;
     }
 }
