@@ -102,8 +102,8 @@ public class P2CBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
-        return Availabilities.avgOfServiceFactories(buffer, P2CBalancer.this);
+    public synchronized double availability() {
+        return Availabilities.avgOfServiceFactories(buffer);
     }
 
     @Override

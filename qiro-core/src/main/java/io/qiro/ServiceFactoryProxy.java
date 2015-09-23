@@ -14,7 +14,7 @@ public class ServiceFactoryProxy<Request, Response> implements ServiceFactory<Re
     }
 
     @Override
-    public Publisher<Double> availability() {
+    public double availability() {
         return underlying.availability();
     }
 

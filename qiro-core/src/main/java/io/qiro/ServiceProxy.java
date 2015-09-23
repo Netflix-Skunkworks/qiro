@@ -15,7 +15,7 @@ public class ServiceProxy<Request, Response> implements Service<Request, Respons
     }
 
     @Override
-    public Publisher<Double> availability() {
+    public double availability() {
         return underlying.availability();
     }
 

@@ -69,7 +69,7 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
+    public double availability() {
         return factory.availability();
     }
 

@@ -70,9 +70,9 @@ public class SingletonPool<Req, Resp> implements ServiceFactory<Req,Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
+    public double availability() {
         if (singleton == null) {
-            return Availabilities.UNAVAILABLE;
+            return 0.0;
         } else {
             return singleton.availability();
         }

@@ -73,8 +73,8 @@ public class Resolvers {
         }
 
         @Override
-        public Publisher<Double> availability() {
-            return Availabilities.avgOfServices(services, services);
+        public synchronized double availability() {
+            return Availabilities.avgOfServices(services);
         }
 
         @Override

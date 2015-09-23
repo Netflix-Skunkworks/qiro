@@ -86,8 +86,8 @@ public class LeastLoadedBalancer<Req, Resp> implements ServiceFactory<Req,Resp> 
     }
 
     @Override
-    public Publisher<Double> availability() {
-        return Availabilities.avgOfServiceFactories(buffer, LeastLoadedBalancer.this);
+    public synchronized double availability() {
+        return Availabilities.avgOfServiceFactories(buffer);
     }
 
     @Override

@@ -103,7 +103,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
+    public double availability() {
         return Availabilities.avgOfServices(queue);
     }
 

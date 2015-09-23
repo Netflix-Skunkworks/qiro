@@ -1,5 +1,6 @@
 package io.qiro;
 
+import io.qiro.util.Availabilities;
 import org.reactivestreams.Publisher;
 
 import java.util.Arrays;
@@ -35,12 +36,8 @@ public class ServiceFactories {
             }
 
             @Override
-            public Publisher<Double> availability() {
-                return s -> {
-                    double availability = availabilityFn.get();
-                    s.onNext(availability);
-                    s.onComplete();
-                };
+            public double availability() {
+                return availabilityFn.get();
             }
 
             @Override
@@ -74,13 +71,17 @@ public class ServiceFactories {
             }
 
             @Override
-            public Publisher<Double> availability() {
-                return null;
+            public double availability() {
+                return Availabilities.avgOfServices(services);
             }
 
             @Override
             public Publisher<Void> close() {
-                return null;
+                return s -> {
+                    services.forEach(Service::close);
+                    s.onNext(null);
+                    s.onComplete();
+                };
             }
         };
     }

@@ -13,6 +13,6 @@ public interface Service<Request, Response> {
     //    public Observable<Response> requestSubscription(final Request request);
     //    public Observable<Response> requestChannel(final Observable<Request> requests);
 
-    public Publisher<Double> availability();
+    public double availability();
     public Publisher<Void> close();
 }

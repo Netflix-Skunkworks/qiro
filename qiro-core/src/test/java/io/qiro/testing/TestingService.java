@@ -111,8 +111,8 @@ public class TestingService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
-        return Publishers.just(availabilityValue);
+    public double availability() {
+        return availabilityValue;
     }
 
     @Override

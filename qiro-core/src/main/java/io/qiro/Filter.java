@@ -49,7 +49,7 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
             }
 
             @Override
-            public Publisher<Double> availability() {
+            public double availability() {
                 return service.availability();
             }
 
@@ -99,7 +99,7 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
             }
 
             @Override
-            public Publisher<Double> availability() {
+            public double availability() {
                 return other.availability();
             }
 

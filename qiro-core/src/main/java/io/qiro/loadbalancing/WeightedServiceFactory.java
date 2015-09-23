@@ -16,7 +16,6 @@ import org.reactivestreams.Subscription;
 class WeightedServiceFactory<Req, Resp> extends ServiceFactoryProxy<Req, Resp> {
 
     private double load = 0.0;
-    private double availabilityValue = 0.0;
 
     WeightedServiceFactory(ServiceFactory<Req, Resp> underlying) {
         super(underlying);
@@ -72,13 +71,7 @@ class WeightedServiceFactory<Req, Resp> extends ServiceFactoryProxy<Req, Resp> {
     }
 
     synchronized double getLoad() {
-        // Expect that the subscription is synchronous
-        availability().subscribe(new EmptySubscriber<Double>() {
-            @Override
-            public void onNext(Double x) {
-                availabilityValue = x;
-            }
-        });
+        double availabilityValue = availability();
 
         // in case all availabilities are zeros, it nicely degrades to a normal
         // least loaded loadbalancer.

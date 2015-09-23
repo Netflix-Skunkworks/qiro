@@ -56,8 +56,8 @@ public class ThreadedService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Double> availability() {
-        return s -> s.onNext(1.0);
+    public double availability() {
+        return 1.0;
     }
 
     @Override

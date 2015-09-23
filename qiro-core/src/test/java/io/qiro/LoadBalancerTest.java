@@ -34,7 +34,7 @@ public class LoadBalancerTest {
         Service<Integer, String> service =
             new RoundRobinBalancer<>(from(factories)).toService();
 
-        service.availability().subscribe(new LoggerSubscriber<>("availability"));
+        System.out.println("availability: " + service.availability());
 
         List<String> strings1 = toList(service.apply(from(1, 2)));
         List<String> strings2 = toList(service.apply(from(3, 4)));

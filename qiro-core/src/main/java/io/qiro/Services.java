@@ -7,10 +7,7 @@ import org.reactivestreams.Subscription;
 import java.util.function.Supplier;
 
 public class Services {
-    public static Publisher<Double> ALWAYS_AVAILABLE = s -> {
-        s.onNext(1.0);
-        s.onComplete();
-    };
+    public static Supplier<Double> ALWAYS_AVAILABLE = () -> 1.0;
     public static Supplier<Void> EMPTY_CLOSE_FN = () -> null;
 
     public static <Req, Resp> Service<Req, Resp> fromFunction(ThrowableFunction<Req, Resp> fn) {
@@ -27,7 +24,7 @@ public class Services {
     public static <Req, Resp> Service<Req, Resp> fromFunction(
         ThrowableFunction<Req, Resp> fn,
         Supplier<Void> closeFn,
-        Publisher<Double> availability
+        Supplier<Double> availability
     ) {
         return new Service<Req, Resp>() {
             @Override
@@ -70,8 +67,8 @@ public class Services {
             }
 
             @Override
-            public Publisher<Double> availability() {
-                return availability;
+            public double availability() {
+                return availability.get();
             }
 
             @Override

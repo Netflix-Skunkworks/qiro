@@ -30,17 +30,17 @@ public class FailureAccrualDetectorTest {
 
         // One failing message doesn't change availability
         service.apply(just(1)).subscribe(new EmptySubscriber<>());
-        Double availability = toSingle(service.availability());
+        Double availability = service.availability();
         assertTrue(availability == 1.0);
 
         // Two consecutive failures change the availability
         service.apply(just(2)).subscribe(new EmptySubscriber<>());
-        availability = toSingle(service.availability());
+        availability = service.availability();
         assertTrue(availability == 0.0);
 
         // One success and you are back to the swing of things
         service.apply(just(3)).subscribe(new EmptySubscriber<>());
-        availability = toSingle(service.availability());
+        availability = service.availability();
         assertTrue(availability == 1.0);
     }
 }

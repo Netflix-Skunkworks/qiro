@@ -80,25 +80,19 @@ public class FailureAccrualDetector<Request, Response> implements ServiceFactory
     }
 
     @Override
-    public Publisher<Double> availability() {
-        return new Publisher<Double>() {
-            @Override
-            public void subscribe(Subscriber<? super Double> availabilitySubscriber) {
-                if (deadSince > 0L) {
-                    long elapse = System.currentTimeMillis() - deadSince;
-                    if (elapse < markDeadForMs) {
-                        System.out.println("FailureAccrualDetector return 0.0 availability");
-                        availabilitySubscriber.onNext(0.0);
-                        availabilitySubscriber.onComplete();
-                    } else {
-                        markSuccess(); // revive
-                        underlying.availability().subscribe(availabilitySubscriber);
-                    }
-                } else {
-                    underlying.availability().subscribe(availabilitySubscriber);
-                }
+    public double availability() {
+        if (deadSince > 0L) {
+            long elapse = System.currentTimeMillis() - deadSince;
+            if (elapse < markDeadForMs) {
+                System.out.println("FailureAccrualDetector return 0.0 availability");
+                return 0.0;
+            } else {
+                markSuccess(); // revive
+                return underlying.availability();
             }
-        };
+        } else {
+            return underlying.availability();
+        }
     }
 
     @Override

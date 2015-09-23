@@ -62,8 +62,8 @@ public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
 
 
     @Override
-    public Publisher<Double> availability() {
-        return Availabilities.avgOfServiceFactories(factories, RoundRobinBalancer.this);
+    public synchronized double availability() {
+        return Availabilities.avgOfServiceFactories(factories);
     }
 
     @Override
