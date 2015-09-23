@@ -30,10 +30,8 @@ configure(subprojects) {
     targetCompatibility = JavaVersion.VERSION_1_8
 
     dependencies {
-        compile "io.reactivex:rxjava:1.0.13"
         compile 'org.reactivestreams:reactive-streams:1.0.0.final'
 
         testCompile 'junit:junit:4.12'
-        testRuntime "org.slf4j:slf4j-log4j12:1.7.12"
     }
 }
