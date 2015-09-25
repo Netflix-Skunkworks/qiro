@@ -5,8 +5,7 @@ Qiro is an agnostic communication library supporting multiple interaction models
 
 ## Build and Binaries
 
-<a href='https://travis-ci.org/qiro/qiro/builds'><img src='https://travis-ci.org/qiro/qiro
-.svg?branch=master'></a>
+<a href='https://travis-ci.org/qiro/qiro/builds'><img src='https://travis-ci.org/qiro/qiro.svg?branch=master'></a>
 
 Snapshots are available via JFrog.
 
