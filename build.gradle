@@ -14,24 +14,44 @@
  * limitations under the License.
  */
 buildscript {
-    repositories { jcenter() }
-    dependencies { classpath 'com.netflix.nebula:gradle-rxjava-project-plugin:2.+' }
+    repositories {
+        jcenter()
+        maven { url 'http://dl.bintray.com/qiro/qiro' }
+    }
+    dependencies {
+        classpath 'io.qiro:gradle-nebula-plugin-qiro:1.0.2'
+    }
 }
 
 description = 'Qiro'
-
-apply plugin: 'rxjava-project'
+apply plugin: 'qiro-project'
 
 configure(subprojects) {
-    apply plugin: 'rxjava-project'
+    apply plugin: 'qiro-project'
     apply plugin: 'java'
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+
+    repositories {
+        jcenter()
+        maven { url 'http://dl.bintray.com/qiro/qiro' }
+        maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local' }
+    }
 
     dependencies {
         compile 'org.reactivestreams:reactive-streams:1.0.0.final'
 
         testCompile 'junit:junit:4.12'
     }
+}
+
+// support for snapshot/final releases via versioned branch names like 1.x
+nebulaRelease {
+    addReleaseBranchPattern(/\d+\.\d+\.\d+/)
+    addReleaseBranchPattern('HEAD')
+}
+
+if (project.hasProperty('release.useLastTag')) {
+    tasks.prepare.enabled = false
 }
