@@ -30,6 +30,12 @@ configure(subprojects) {
     apply plugin: 'qiro-project'
     apply plugin: 'java'
 
+    repositories {
+        jcenter()
+        mavenCentral()
+        maven { url 'https://oss.jfrog.org/libs-snapshot' }
+    }
+
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 
@@ -41,7 +47,6 @@ configure(subprojects) {
 
     dependencies {
         compile 'org.reactivestreams:reactive-streams:1.0.0.final'
-
         testCompile 'junit:junit:4.12'
     }
 }

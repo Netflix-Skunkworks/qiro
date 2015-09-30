@@ -33,7 +33,7 @@ public class Publishers {
                     public void request(long n) {
                         for (; index < values.length && index < n; index++) {
                             T value = values[index];
-                            System.out.println("Publishers.from -> " + value);
+//                            System.out.println("Publishers.from -> " + value);
                             s.onNext(value);
                             if (interrupted) {
                                 return;
@@ -193,6 +193,7 @@ public class Publishers {
 
             @Override
             public void onNext(T t) {
+//                System.out.println("toList onNext " + t);
                 counter += 1;
                 if (counter > batchSize / 2) {
                     counter = 0;
@@ -209,6 +210,7 @@ public class Publishers {
 
             @Override
             public void onComplete() {
+                System.out.println("toList onComplete");
                 latch.countDown();
             }
         });

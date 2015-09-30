@@ -17,4 +17,4 @@
 rootProject.name='qiro'
 include 'qiro-core'
 include 'qiro-reactivesocket'
-
+include 'qiro-http'

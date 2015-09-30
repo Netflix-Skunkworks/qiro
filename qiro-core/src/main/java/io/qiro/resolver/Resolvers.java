@@ -18,7 +18,7 @@ import java.util.function.Function;
 public class Resolvers {
     public static <Req, Resp> Publisher<Set<ServiceFactory<Req, Resp>>> resolveFactory(
         Publisher<Set<SocketAddress>> addresses,
-        Function<SocketAddress, Service<Req, Resp>> fn
+        TransportConnector<Req, Resp> connector
     ) {
         return subscriber -> addresses.subscribe(new Subscriber<Set<SocketAddress>>() {
             @Override
@@ -31,7 +31,7 @@ public class Resolvers {
                 Set<ServiceFactory<Req, Resp>> factories = new HashSet<>();
                 for (SocketAddress addr : socketAddresses) {
                     ServiceFactory<Req, Resp> factory =
-                        new InetServiceFactory<>(fn, addr);
+                        connector.toFactory(addr);
                     factories.add(factory);
                 }
                 subscriber.onNext(factories);

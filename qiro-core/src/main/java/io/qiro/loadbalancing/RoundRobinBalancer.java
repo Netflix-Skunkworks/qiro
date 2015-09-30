@@ -18,6 +18,7 @@ public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
 
     public RoundRobinBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factorySet) {
         this.factories = new ArrayList<>();
+        this.i = 0;
         factorySet.subscribe(new EmptySubscriber<Set<ServiceFactory<Req, Resp>>>() {
             @Override
             public void onNext(Set<ServiceFactory<Req, Resp>> set) {

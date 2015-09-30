@@ -22,8 +22,8 @@ public interface Resolver {
     default <Req, Resp>
     Publisher<Set<ServiceFactory<Req, Resp>>> resolveFactory(
         URL url,
-        Function<SocketAddress, Service<Req, Resp>> fn
+        TransportConnector<Req, Resp> connector
     ) {
-        return Resolvers.resolveFactory(resolve(url), fn);
+        return Resolvers.resolveFactory(resolve(url), connector);
     }
 }
