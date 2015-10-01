@@ -18,13 +18,15 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.qiro.util.Publishers.*;
 
 public class SimpleHttpClientTest {
-    @Test(timeout = 200_000L)
+
+    @Test(timeout = 300_000L)
     public void testSimpleHttpClient() throws InterruptedException {
-        NettyTransportConnector connector = new NettyTransportConnector();
+        NettyTransportConnector connector = new NettyTransportConnector(10);
 
         Set<ServiceFactory<HttpRequest, HttpResponse>> factories = new HashSet<>();
         factories.add(connector.toFactory(new InetSocketAddress(8080)));
@@ -42,23 +44,29 @@ public class SimpleHttpClientTest {
 //        );
 
         Service<HttpRequest, HttpResponse> service =
-            new RetryFilter<HttpRequest, HttpResponse>(3)
-                .andThen(new TimeoutFilter<>(1000))
-                .andThen(new P2CBalancer<>(from(factories)).toService());
+            new TimeoutFilter<HttpRequest, HttpResponse>(1000)
+                .andThen(new P2CBalancer<>(from(factories))
+                .toService());
 
-        ExecutorService executor = Executors.newFixedThreadPool(64);
-        int n = 1;
+        ExecutorService executor = Executors.newFixedThreadPool(12);
+        int n = 256;
         CountDownLatch latch = new CountDownLatch(n);
 
         int i = 0;
+        AtomicInteger success = new AtomicInteger(0);
+        AtomicInteger failure = new AtomicInteger(0);
         while (i < n) {
             executor.submit( () -> {
                 try {
                     HttpResponse httpResponse =
                         toSingle(service.apply(just(createGetRequest("/", "127.0.0.1"))));
                     System.out.println(httpResponse.status());
+                    success.incrementAndGet();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                } catch (RuntimeException e) {
+                    failure.incrementAndGet();
+                    System.out.println("RuntimeException " + e);
                 } finally {
                     latch.countDown();
                 }
@@ -68,6 +76,8 @@ public class SimpleHttpClientTest {
         }
         latch.await();
         Thread.sleep(100);
+        System.out.println("### FINITO ###");
+        System.out.println("successes: " + success.get() + "  failures: " + failure.get());
     }
 
     private HttpRequest createGetRequest(String path, String host) {

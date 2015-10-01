@@ -171,7 +171,7 @@ public class Publishers {
     public static <T> T toSingle(Publisher<T> publisher) throws InterruptedException {
         List<T> data = toList(publisher);
         if (data.size() != 1) {
-            throw new RuntimeException("Not a single value");
+            throw new RuntimeException("Not a single value " + data);
         }
         return data.get(0);
     }

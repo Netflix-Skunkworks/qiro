@@ -7,7 +7,6 @@ import io.qiro.Service;
 import io.reactivex.netty.client.ConnectionProvider;
 import io.reactivex.netty.client.pool.PooledConnectionProvider;
 import io.reactivex.netty.protocol.http.client.HttpClient;
-import io.reactivex.netty.protocol.http.client.HttpClientImpl;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
 import org.reactivestreams.Publisher;
@@ -18,17 +17,16 @@ import java.net.SocketAddress;
 
 class RxNettyService implements Service<HttpRequest, HttpResponse> {
     private final Subscriber<? super Service<HttpRequest, HttpResponse>> subscriber;
-    HttpClient<ByteBuf, ByteBuf> client;
+    private final HttpClient<ByteBuf, ByteBuf> client;
 
     public RxNettyService(
         SocketAddress address,
+        int maxConnections,
         Subscriber<? super Service<HttpRequest, HttpResponse>> subscriber
     ) {
         this.subscriber = subscriber;
         ConnectionProvider<ByteBuf, ByteBuf> provider =
-            PooledConnectionProvider.createBounded(10, address);
-//        client = HttpClientImpl.create(provider);
-//        client = HttpClient.newClient(provider);
+            PooledConnectionProvider.createBounded(maxConnections, address);
         client = HttpClient.newClient(address);
     }
 
@@ -45,27 +43,22 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
 
                     @Override
                     public void onNext(HttpRequest request) {
-                        System.out.println("sending req " + request);
-//                        HttpClientRequest<ByteBuf, ByteBuf> rxNettyRequest = client.createRequest(
-//                            request.protocolVersion(), request.method(), request.uri());
-                        HttpClientRequest<ByteBuf, ByteBuf> rxNettyRequest = client.createGet(request.uri());
+                        HttpClientRequest<ByteBuf, ByteBuf> rxNettyRequest = client.createRequest(
+                            request.protocolVersion(), request.method(), request.uri());
 
                         rxNettyRequest.subscribe(new rx.Subscriber<HttpClientResponse<ByteBuf>>() {
                             @Override
                             public void onCompleted() {
-                                System.out.println("RxNetty onComplete");
                                 responseSub.onComplete();
                             }
 
                             @Override
                             public void onError(Throwable e) {
-                                System.out.println("RxNetty exc: " + e);
                                 responseSub.onError(e);
                             }
 
                             @Override
                             public void onNext(HttpClientResponse<ByteBuf> response) {
-                                System.out.println("RxNetty res: " + response);
                                 HttpResponse httpResponse = RxNettyResponse.wrap(response);
                                 responseSub.onNext(httpResponse);
                             }
