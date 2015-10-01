@@ -43,13 +43,20 @@ public class SimpleHttpClientTest {
 //            )
 //        );
 
+//        Service<HttpRequest, HttpResponse> service =
+//            new TimeoutFilter<HttpRequest, HttpResponse>(1000)
+//                .andThen(new P2CBalancer<>(from(factories))
+//                    .toService());
+
+
         Service<HttpRequest, HttpResponse> service =
-            new TimeoutFilter<HttpRequest, HttpResponse>(1000)
+            new RetryFilter<HttpRequest, HttpResponse>(3)
+                .andThen(new TimeoutFilter<>(5000))
                 .andThen(new P2CBalancer<>(from(factories))
                 .toService());
 
-        ExecutorService executor = Executors.newFixedThreadPool(12);
-        int n = 256;
+        ExecutorService executor = Executors.newFixedThreadPool(64);
+        int n = 128;
         CountDownLatch latch = new CountDownLatch(n);
 
         int i = 0;
@@ -84,7 +91,6 @@ public class SimpleHttpClientTest {
         HttpRequest request = new DefaultFullHttpRequest(
             HttpVersion.HTTP_1_1, HttpMethod.GET, path);
         request.headers().set(HttpHeaderNames.HOST, host);
-//        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
 
         return request;

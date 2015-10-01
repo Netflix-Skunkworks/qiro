@@ -8,6 +8,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.io.IOException;
+import java.net.SocketException;
+
 public class RetryFilter<Request, Response> implements Filter<Request, Request, Response, Response> {
     private int limit;
 
@@ -55,10 +58,11 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
                         }
                         // if the exception is Retryable and the stream of responses didn't started,
                         // it's safe to retry the call.
-                        if (retryBudget > 0 && !started && t instanceof Retryable) {
+                        if (retryBudget > 0 && !started && isRetryable(t)) {
                             canceled = true;
                             Publisher<Response> newResponses =
                                 apply(restartablePublisher.restart(), service, retryBudget - 1);
+                            System.out.println("***** retrying");
                             newResponses.subscribe(subscriber);
                         } else {
                             subscriber.onError(t);
@@ -74,5 +78,17 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
                 });
             }
         };
+    }
+
+    private boolean isRetryable(Throwable t) {
+        if (t instanceof Retryable) {
+            return true;
+        } else if (t instanceof SocketException) {
+            return true;
+        } else if (t instanceof IOException) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

@@ -8,7 +8,6 @@ import org.reactivestreams.Publisher;
 import java.net.SocketAddress;
 
 public class NettyTransportConnector implements TransportConnector<HttpRequest, HttpResponse> {
-
     private final int maxConnections;
 
     public NettyTransportConnector(int maxConnections) {
