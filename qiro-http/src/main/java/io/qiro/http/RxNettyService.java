@@ -27,7 +27,7 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
         this.subscriber = subscriber;
         ConnectionProvider<ByteBuf, ByteBuf> provider =
             PooledConnectionProvider.createBounded(maxConnections, address);
-        client = HttpClient.newClient(address);
+        client = HttpClient.newClient(provider);
     }
 
     @Override
