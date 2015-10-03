@@ -10,12 +10,19 @@ import org.reactivestreams.Subscription;
 
 import java.io.IOException;
 import java.net.SocketException;
+import java.util.function.Function;
 
 public class RetryFilter<Request, Response> implements Filter<Request, Request, Response, Response> {
     private int limit;
+    private Function<Throwable, Boolean> retryThisThrowable;
+
+    public RetryFilter(int limit, Function<Throwable, Boolean> retryThisThrowable) {
+        this.limit = limit;
+        this.retryThisThrowable = retryThisThrowable;
+    }
 
     public RetryFilter(int limit) {
-        this.limit = limit;
+        this(limit, t -> false);
     }
 
     @Override
@@ -88,7 +95,7 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
         } else if (t instanceof IOException) {
             return true;
         } else {
-            return false;
+            return retryThisThrowable.apply(t);
         }
     }
 }

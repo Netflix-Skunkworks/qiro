@@ -9,7 +9,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
@@ -17,6 +19,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
     private final int high;
     private final int maxBuffer;
     private final ServiceFactory<Req, Resp> underlying;
+    private final List<Service<Req, Resp>> services;
     private final Deque<Service<Req, Resp>> queue;
     private final Deque<Subscriber<? super Service<Req, Resp>>> waiters;
     private int createdServices;
@@ -26,6 +29,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
         this.high = high;
         this.maxBuffer = maxBuffer;
         this.underlying = underlying;
+        services = new ArrayList<>();
         queue = new ConcurrentLinkedDeque<>();
         waiters = new ConcurrentLinkedDeque<>();
         createdServices = 0;
@@ -65,6 +69,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
 
             @Override
             public void onNext(Service<Req, Resp> service) {
+                services.add(service);
                 Service<Req, Resp> proxy = new ServiceProxy<Req, Resp>(service) {
                     @Override
                     public Publisher<Void> close() {
@@ -104,14 +109,14 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
 
     @Override
     public double availability() {
-        return Availabilities.avgOfServices(queue);
+        return Availabilities.avgOfServices(services);
     }
 
     @Override
     public Publisher<Void> close() {
         return subscriber -> {
             createdServices = 2 * high;
-            queue.forEach(svc -> svc.close().subscribe(new EmptySubscriber<>()));
+            services.forEach(svc -> svc.close().subscribe(new EmptySubscriber<>()));
             subscriber.onNext(null);
             subscriber.onComplete();
         };

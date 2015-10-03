@@ -204,7 +204,7 @@ public class Publishers {
 
             @Override
             public void onError(Throwable t) {
-                System.out.println("toList received error " + t);
+                System.err.println("toList received error " + t);
                 latch.countDown();
             }
 
@@ -215,7 +215,9 @@ public class Publishers {
             }
         });
 
-        latch.await(5, TimeUnit.SECONDS);
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+            System.err.println("toList timeout!");
+        }
         return result;
     }
 }

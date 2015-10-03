@@ -7,7 +7,6 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 class RxNettyResponse implements HttpResponse {
     private final HttpClientResponse<ByteBuf> response;
@@ -22,17 +21,17 @@ class RxNettyResponse implements HttpResponse {
 
     @Override
     public DecoderResult decoderResult() {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 
     @Override
     public void setDecoderResult(DecoderResult result) {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 
     @Override
     public DecoderResult getDecoderResult() {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 
     @Override
@@ -47,7 +46,7 @@ class RxNettyResponse implements HttpResponse {
 
     @Override
     public HttpResponse setStatus(HttpResponseStatus status) {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 
     @Override
@@ -62,11 +61,11 @@ class RxNettyResponse implements HttpResponse {
 
     @Override
     public HttpResponse setProtocolVersion(HttpVersion version) {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 
     @Override
     public HttpHeaders headers() {
-        throw new NotImplementedException();
+        throw new IllegalAccessError();
     }
 }
