@@ -60,7 +60,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
         };
     }
 
-    private void createAndPublishService(final Subscriber<? super Service<Req, Resp>> subscriber) {
+    private void createAndPublishService(final Subscriber<? super Service<Req, Resp>> svcSubscriber) {
         underlying.apply().subscribe(new Subscriber<Service<Req, Resp>>() {
             @Override
             public void onSubscribe(Subscription s) {
@@ -73,7 +73,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
                 Service<Req, Resp> proxy = new ServiceProxy<Req, Resp>(service) {
                     @Override
                     public Publisher<Void> close() {
-                        return subscriber -> {
+                        return closeSubscriber -> {
                             synchronized (WatermarkPool.this) {
                                 if (!waiters.isEmpty()) {
                                     Subscriber<? super Service<Req, Resp>> waitingSubscriber =
@@ -81,7 +81,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
                                     waitingSubscriber.onNext(this);
                                 } else if (createdServices > low) {
                                     createdServices -= 1;
-                                    underlying.close().subscribe(subscriber);
+                                    underlying.close().subscribe(closeSubscriber);
                                 } else {
                                     System.out.println("WatermarkPool: moving svc " +
                                         this + " to the queue");
@@ -92,30 +92,36 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
                     }
                 };
                 System.out.println("WatermarkPool: Creating ServiceProxy " + proxy);
-                subscriber.onNext(proxy);
+                svcSubscriber.onNext(proxy);
             }
 
             @Override
-            public void onError(Throwable t) {
-                subscriber.onError(t);
+            public void onError(Throwable serviceCreationFailure) {
+                svcSubscriber.onError(serviceCreationFailure);
             }
 
             @Override
             public void onComplete() {
-                subscriber.onComplete();
+                svcSubscriber.onComplete();
             }
         });
     }
 
     @Override
     public double availability() {
-        return Availabilities.avgOfServices(services);
+        if (createdServices < low) {
+            return 1.0;
+        } else {
+            return Availabilities.avgOfServices(services);
+        }
     }
 
     @Override
     public Publisher<Void> close() {
         return subscriber -> {
             createdServices = 2 * high;
+            waiters.forEach(sub -> sub.onError(
+                new Exception("Closing the WatermarkPool, killing the waiters")));
             services.forEach(svc -> svc.close().subscribe(new EmptySubscriber<>()));
             subscriber.onNext(null);
             subscriber.onComplete();

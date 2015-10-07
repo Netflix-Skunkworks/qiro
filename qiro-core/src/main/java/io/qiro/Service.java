@@ -4,7 +4,7 @@ import org.reactivestreams.Publisher;
 
 public interface Service<Request, Response> {
 
-    public Publisher<Response> apply(Publisher<Request> reqStream);
+    public Publisher<Response> apply(Publisher<Request> inputs);
 
     // 5 Interaction models
     //    public Observable<Void> fireAndForget(final Request request);

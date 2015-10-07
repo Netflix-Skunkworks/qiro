@@ -3,7 +3,7 @@ package io.qiro.http;
 import io.netty.handler.codec.http.*;
 import io.qiro.Service;
 import io.qiro.ServiceFactory;
-import io.qiro.filter.RetryFilter;
+import io.qiro.filter.FailureAccrualDetector;
 import io.qiro.filter.TimeoutFilter;
 import io.qiro.loadbalancing.P2CBalancer;
 import io.qiro.pool.WatermarkPool;
@@ -26,28 +26,38 @@ public class SimpleHttpClientTest {
     @Ignore
     @Test(timeout = 30_000L)
     public void testSimpleHttpClient() throws InterruptedException {
-        NettyTransportConnector connector = new NettyTransportConnector(11);
+        NettyTransportConnector connector = new NettyTransportConnector();
 
         Set<ServiceFactory<HttpRequest, HttpResponse>> factories = new HashSet<>();
-//        factories.add(connector.toFactory(new InetSocketAddress(8080)));
-//        factories.add(connector.toFactory(new InetSocketAddress(8081)));
 
         factories.add(
-            new WatermarkPool<>(1, 10, 128,
-                connector.toFactory(new InetSocketAddress(8080))
+            new FailureAccrualDetector<>(
+                new WatermarkPool<>(1, 10, 128,
+                    connector.toFactory(new InetSocketAddress(8080))
+                )
             )
         );
         factories.add(
-            new WatermarkPool<>(1, 10, 128,
-                connector.toFactory(new InetSocketAddress(8081))
+            new FailureAccrualDetector<>(
+                new WatermarkPool<>(1, 10, 128,
+                    connector.toFactory(new InetSocketAddress(8081))
+                )
             )
         );
 
         Service<HttpRequest, HttpResponse> service =
-            new RetryFilter<HttpRequest, HttpResponse>(3)
-                .andThen(new TimeoutFilter<>(5000))
-                .andThen(new P2CBalancer<>(from(factories))
-                .toService());
+            new TimeoutFilter<HttpRequest, HttpResponse>(5000)
+                .andThen(new P2CBalancer<>(from(factories)))
+                .toService();
+
+        // Stack is:
+        //
+        // FactoryToService        (S)
+        // TimeoutFilter           (S)
+        // LoadBalancer            (SF)
+        // FailureAccrualDetector  (SF)
+        // WatermarkPool           (SF)
+        // RxNettyService          (S)
 
         int n = 128;
         CountDownLatch latch = new CountDownLatch(n);
@@ -72,14 +82,12 @@ public class SimpleHttpClientTest {
                         failure.incrementAndGet();
                         System.err.println("Exception " + t);
                         latch.countDown();
-                        System.out.println(latch.getCount());
                     }
 
                     @Override
                     public void onComplete() {
                         success.incrementAndGet();
                         latch.countDown();
-                        System.out.println(latch.getCount());
                     }
                 });
             i += 1;

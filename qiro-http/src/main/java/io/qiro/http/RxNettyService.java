@@ -13,66 +13,89 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.net.ConnectException;
 import java.net.SocketAddress;
+import java.net.SocketException;
+
 
 class RxNettyService implements Service<HttpRequest, HttpResponse> {
+    private final SocketAddress address;
     private final Subscriber<? super Service<HttpRequest, HttpResponse>> subscriber;
-    private final HttpClient<ByteBuf, ByteBuf> client;
+    private HttpClient<ByteBuf, ByteBuf> client;
+    private double availability;
 
     public RxNettyService(
         SocketAddress address,
-        int maxConnections,
         Subscriber<? super Service<HttpRequest, HttpResponse>> subscriber
     ) {
+        this.address = address;
         this.subscriber = subscriber;
+
+        // this should be done outside, but AFAIK establishing a connection is lazy in RxNetty
         ConnectionProvider<ByteBuf, ByteBuf> provider =
-            PooledConnectionProvider.createBounded(maxConnections, address);
+            PooledConnectionProvider.createUnbounded(address);
         client = HttpClient.newClient(provider);
+        this.availability = 1.0;
     }
 
     @Override
     public Publisher<HttpResponse> apply(Publisher<HttpRequest> inputs) {
         return new Publisher<HttpResponse>() {
             @Override
-            public void subscribe(Subscriber<? super HttpResponse> responseSub) {
+            public void subscribe(Subscriber<? super HttpResponse> respSubcriber) {
                 inputs.subscribe(new Subscriber<HttpRequest>() {
                     @Override
                     public void onSubscribe(Subscription s) {
-                        responseSub.onSubscribe(s);
+                        respSubcriber.onSubscribe(s);
                     }
 
                     @Override
                     public void onNext(HttpRequest request) {
+                        synchronized (RxNettyService.this) {
+                            // Hack to trigger reconnection
+                            if (client == null) {
+                                ConnectionProvider<ByteBuf, ByteBuf> provider =
+                                    PooledConnectionProvider.createUnbounded(address);
+                                client = HttpClient.newClient(provider);
+                            }
+                        }
                         HttpClientRequest<ByteBuf, ByteBuf> rxNettyRequest = client.createRequest(
                             request.protocolVersion(), request.method(), request.uri());
 
                         rxNettyRequest.subscribe(new rx.Subscriber<HttpClientResponse<ByteBuf>>() {
                             @Override
                             public void onCompleted() {
-                                responseSub.onComplete();
+                                respSubcriber.onComplete();
                             }
 
                             @Override
-                            public void onError(Throwable e) {
-                                responseSub.onError(e);
+                            public void onError(Throwable requestFailure) {
+                                // Hack to trigger reconnection
+                                if (requestFailure instanceof ConnectException
+                                    || requestFailure instanceof SocketException) {
+                                    synchronized (RxNettyService.this) {
+                                        client = null;
+                                    }
+                                }
+                                respSubcriber.onError(requestFailure);
                             }
 
                             @Override
                             public void onNext(HttpClientResponse<ByteBuf> response) {
                                 HttpResponse httpResponse = RxNettyResponse.wrap(response);
-                                responseSub.onNext(httpResponse);
+                                respSubcriber.onNext(httpResponse);
                             }
                         });
                     }
 
                     @Override
-                    public void onError(Throwable t) {
-                        subscriber.onError(t);
+                    public void onError(Throwable inputFailure) {
+                        respSubcriber.onError(inputFailure);
                     }
 
                     @Override
                     public void onComplete() {
-                        subscriber.onComplete();
+                        // inputs complete
                     }
                 });
             }
@@ -82,7 +105,7 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
     @Override
     public double availability() {
         // AFAIK: No current way to know the state of the client
-        return 1.0;
+        return availability;
     }
 
     @Override

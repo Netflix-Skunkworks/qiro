@@ -15,6 +15,7 @@ import org.reactivestreams.Subscription;
  */
 class WeightedServiceFactory<Req, Resp> extends ServiceFactoryProxy<Req, Resp> {
 
+    private static final double PENALTY_CONSTANT = 1_000_000;
     private double load = 0.0;
 
     WeightedServiceFactory(ServiceFactory<Req, Resp> underlying) {
@@ -61,12 +62,14 @@ class WeightedServiceFactory<Req, Resp> extends ServiceFactoryProxy<Req, Resp> {
     }
 
     synchronized void increment() {
-        System.out.println("WeightedServiceFactory: load +1 on svc_" + hashCode());
+//        System.out.println("WeightedServiceFactory: load +1 on svc_"
+//            + hashCode() + " load: " + getLoad());
         load += 1;
     }
 
     synchronized void decrement() {
-        System.out.println("WeightedServiceFactory: load -1 on svc_" + hashCode());
+//        System.out.println("WeightedServiceFactory: load -1 on svc_"
+//            + hashCode() + " load: " + getLoad());
         load -= 1;
     }
 
@@ -75,11 +78,10 @@ class WeightedServiceFactory<Req, Resp> extends ServiceFactoryProxy<Req, Resp> {
 
         // in case all availabilities are zeros, it nicely degrades to a normal
         // least loaded loadbalancer.
-        double penaltyFactor = (double) Integer.MAX_VALUE;
-        if (availabilityValue != 0.0) {
-            penaltyFactor = 1.0 / availabilityValue;
+        if (availabilityValue > 0.0) {
+            return load / availabilityValue;
+        } else {
+            return load + PENALTY_CONSTANT;
         }
-
-        return penaltyFactor * load;
     }
 }

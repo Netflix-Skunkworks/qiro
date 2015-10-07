@@ -16,53 +16,51 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
     public Publisher<Resp> apply(Publisher<Req> inputs) {
         return new Publisher<Resp>() {
             @Override
-            public void subscribe(Subscriber<? super Resp> subscriber) {
+            public void subscribe(Subscriber<? super Resp> responseSubscriber) {
                 Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
                 servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
-                    private Service<Req, Resp> service = null;
 
                     @Override
                     public void onSubscribe(Subscription subscription) {
                         // request only one service
-                        subscription.request(1);
+                        subscription.request(1L);
                     }
 
                     @Override
                     public void onNext(Service<Req, Resp> service) {
-                        this.service = service;
                         Publisher<Resp> responses = service.apply(inputs);
                         responses.subscribe(new Subscriber<Resp>() {
                             @Override
                             public void onSubscribe(Subscription s) {
-                                subscriber.onSubscribe(s);
+                                responseSubscriber.onSubscribe(s);
                             }
 
                             @Override
-                            public void onNext(Resp resp) {
-                                subscriber.onNext(resp);
+                            public void onNext(Resp response) {
+                                responseSubscriber.onNext(response);
                             }
 
                             @Override
-                            public void onError(Throwable t) {
-                                subscriber.onError(t);
+                            public void onError(Throwable responseFailure) {
+                                service.close().subscribe(new EmptySubscriber<>());
+                                responseSubscriber.onError(responseFailure);
                             }
 
                             @Override
                             public void onComplete() {
-                                service.close().subscribe(new EmptySubscriber<Void>());
-                                subscriber.onComplete();
+                                service.close().subscribe(new EmptySubscriber<>());
+                                responseSubscriber.onComplete();
                             }
                         });
                     }
 
                     @Override
-                    public void onError(Throwable t) {
-                        subscriber.onError(t);
+                    public void onError(Throwable serviceCreationFailure) {
+                        responseSubscriber.onError(serviceCreationFailure);
                     }
 
                     @Override
-                    public void onComplete() {
-                    }
+                    public void onComplete() {}
                 });
             }
         };

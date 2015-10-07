@@ -37,54 +37,55 @@ public class FailureAccrualDetector<Request, Response> implements ServiceFactory
     public Publisher<Service<Request, Response>> apply() {
         return new Publisher<Service<Request, Response>>() {
             @Override
-            public void subscribe(Subscriber<? super Service<Request, Response>> subscriber) {
+            public void subscribe(Subscriber<? super Service<Request, Response>> svcSubscriber) {
                 map(underlying.apply(), service -> new FailureAccrualService<>(service))
                     .subscribe(new Subscriber<Service<Request, Response>>() {
                         @Override
                         public void onSubscribe(Subscription s) {
-                            subscriber.onSubscribe(s);
+                            svcSubscriber.onSubscribe(s);
                         }
 
                         @Override
                         public void onNext(Service<Request, Response> svc) {
-                            subscriber.onNext(svc);
+                            svcSubscriber.onNext(svc);
                         }
 
                         @Override
                         public void onError(Throwable t) {
-                            subscriber.onError(t);
+                            svcSubscriber.onError(t);
                             markFailure();  // ServiceFactory failures also trigger markFailure
                         }
 
                         @Override
                         public void onComplete() {
-                            subscriber.onComplete();
+                            svcSubscriber.onComplete();
                         }
                     });
             }
         };
     }
 
-    private void markFailure() {
-        System.out.println("FailureAccrualDetector.markFailure");
+    private synchronized void markFailure() {
+//        System.out.println(toString() + " FailureAccrualDetector.markFailure");
         consecutiveFailures += 1;
-        if (consecutiveFailures >= consecutiveErrorThreshold) {
+        if (consecutiveFailures >= consecutiveErrorThreshold && deadSince < 0L) {
+            System.out.println(toString() + " FailureAccrualDetector markDEAD!");
             deadSince = System.currentTimeMillis();
         }
     }
 
-    private void markSuccess() {
-        System.out.println("FailureAccrualDetector.markSuccess");
+    private synchronized void markSuccess() {
+//        System.out.println(toString() + " FailureAccrualDetector.markSuccess");
         consecutiveFailures = 0;
         deadSince = -1L;
     }
 
     @Override
-    public double availability() {
+    public synchronized double availability() {
         if (deadSince > 0L) {
             long elapse = System.currentTimeMillis() - deadSince;
             if (elapse < markDeadForMs) {
-                System.out.println("FailureAccrualDetector return 0.0 availability");
+//                System.out.println(toString() + " FailureAccrualDetector return 0.0 availability");
                 return 0.0;
             } else {
                 markSuccess(); // revive
