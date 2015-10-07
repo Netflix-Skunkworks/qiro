@@ -4,8 +4,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.qiro.Service;
-import io.reactivex.netty.client.ConnectionProvider;
-import io.reactivex.netty.client.pool.PooledConnectionProvider;
 import io.reactivex.netty.protocol.http.client.HttpClient;
 import io.reactivex.netty.protocol.http.client.HttpClientRequest;
 import io.reactivex.netty.protocol.http.client.HttpClientResponse;
@@ -32,9 +30,7 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
         this.subscriber = subscriber;
 
         // this should be done outside, but AFAIK establishing a connection is lazy in RxNetty
-        ConnectionProvider<ByteBuf, ByteBuf> provider =
-            PooledConnectionProvider.createUnbounded(address);
-        client = HttpClient.newClient(provider);
+        client = HttpClient.newClient(address);
         this.availability = 1.0;
     }
 
@@ -54,9 +50,7 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
                         synchronized (RxNettyService.this) {
                             // Hack to trigger reconnection
                             if (client == null) {
-                                ConnectionProvider<ByteBuf, ByteBuf> provider =
-                                    PooledConnectionProvider.createUnbounded(address);
-                                client = HttpClient.newClient(provider);
+                                client = HttpClient.newClient(address);
                             }
                         }
                         HttpClientRequest<ByteBuf, ByteBuf> rxNettyRequest = client.createRequest(
