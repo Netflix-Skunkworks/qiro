@@ -15,4 +15,5 @@
  *
  */
 dependencies {
+    compile 'io.netty:netty-buffer:4.1.0.Beta5'
 }

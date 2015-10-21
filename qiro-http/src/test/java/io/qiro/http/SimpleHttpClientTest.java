@@ -3,7 +3,8 @@ package io.qiro.http;
 import io.netty.handler.codec.http.*;
 import io.qiro.Service;
 import io.qiro.ServiceFactory;
-import io.qiro.filter.FailureAccrualDetector;
+import io.qiro.failures.FailureAccrualDetector;
+import io.qiro.filter.RetryFilter;
 import io.qiro.filter.TimeoutFilter;
 import io.qiro.loadbalancing.P2CBalancer;
 import io.qiro.pool.WatermarkPool;
@@ -93,6 +94,7 @@ public class SimpleHttpClientTest {
             i += 1;
         }
         latch.await();
+        Thread.sleep(10);
         System.out.println("### FINITO ###");
         System.out.println("successes: " + success.get() + "  failures: " + failure.get());
         assertEquals(0, failure.get());

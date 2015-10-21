@@ -129,6 +129,49 @@ public class Publishers {
         };
     }
 
+    public static <Input, Output> Publisher<Output> transform(
+        Publisher<Input> inputs,
+        ThrowableFunction<Input, Output> elementTransformer,
+        ThrowableFunction<Throwable, Throwable> errorTransformer
+    ) {
+        return new Publisher<Output>() {
+            @Override
+            public void subscribe(Subscriber<? super Output> subscriber) {
+                inputs.subscribe(new Subscriber<Input>() {
+                    @Override
+                    public void onSubscribe(Subscription subscription) {
+                        subscriber.onSubscribe(subscription);
+                    }
+
+                    @Override
+                    public void onNext(Input input) {
+                        try {
+                            Output output = elementTransformer.apply(input);
+                            subscriber.onNext(output);
+                        } catch (Throwable ex) {
+                            onError(ex);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        try {
+                            subscriber.onError(errorTransformer.apply(t));
+                        } catch (Throwable ex) {
+                            subscriber.onError(ex);
+                        }
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        subscriber.onComplete();
+                    }
+                });
+            }
+        };
+    }
+
+
     public static <T> Publisher<List<T>> concat(List<Publisher<T>> inputs) {
         return new Publisher<List<T>>() {
             private List<T> buffer = new ArrayList<>();
@@ -210,12 +253,12 @@ public class Publishers {
 
             @Override
             public void onComplete() {
-                System.out.println("toList onComplete");
+//                System.out.println("toList onComplete");
                 latch.countDown();
             }
         });
 
-        if (!latch.await(5, TimeUnit.SECONDS)) {
+        if (!latch.await(5, TimeUnit.MINUTES)) {
             System.err.println("toList timeout!");
         }
         return result;

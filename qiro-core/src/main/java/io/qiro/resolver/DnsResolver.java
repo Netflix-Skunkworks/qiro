@@ -28,18 +28,21 @@ public class DnsResolver implements Resolver {
     }
 
     @Override
-    public Publisher<Set<SocketAddress>> resolve(URL url) {
+    public Publisher<Set<SocketAddress>> resolve(String url) {
         return new Publisher<Set<SocketAddress>>() {
             @Override
             public void subscribe(Subscriber<? super Set<SocketAddress>> subscriber) {
-                String protocol = url.getProtocol();
+//                String protocol = url.getProtocol();
+                String protocol = "dns";
                 if (!protocol.equals(PROTOCOL_NAME)) {
                     String message = "'" + protocol + "' isn't supported by the DnsResolver\n";
                     message += "URL should be in the form 'dns://hostname:port,hostname2:port2'";
                     subscriber.onError(new MalformedURLException(message));
                 } else {
                     // TODO: fix that, make it asynchronous and check periodically
-                    Set<SocketAddress> addresses = new HashSet<>(resolveDns(url.getHost()));
+//                    Set<SocketAddress> addresses = new HashSet<>(resolveDns(url.getHost()));
+                    Set<SocketAddress> addresses = new HashSet<>(
+                        resolveDns(url.substring("dns://".length())));
                     subscriber.onNext(addresses);
                 }
             }
@@ -54,6 +57,7 @@ public class DnsResolver implements Resolver {
         List<SocketAddress> addresses = new ArrayList<>();
         try {
             for (InetAddress addr: lookupFunc.apply(host)) {
+
                 addresses.add(new InetSocketAddress(addr, port));
             }
         } catch (UnknownHostException e) {

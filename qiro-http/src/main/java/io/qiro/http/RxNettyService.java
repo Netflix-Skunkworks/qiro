@@ -34,6 +34,17 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
         this.availability = 1.0;
     }
 
+    public RxNettyService(
+        HttpClient client,
+        Subscriber<? super Service<HttpRequest, HttpResponse>> subscriber
+    ) {
+        this.address = null;
+        this.subscriber = subscriber;
+        this.client = client;
+        this.availability = 1.0;
+    }
+
+
     @Override
     public Publisher<HttpResponse> apply(Publisher<HttpRequest> inputs) {
         return new Publisher<HttpResponse>() {

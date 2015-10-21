@@ -9,6 +9,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.SocketException;
 import java.util.function.Function;
 

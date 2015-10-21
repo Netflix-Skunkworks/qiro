@@ -17,11 +17,11 @@ import java.util.function.Function;
  * This process is asynchronous and the resolution may change over time.
  */
 public interface Resolver {
-    public Publisher<Set<SocketAddress>> resolve(URL url);
+    public Publisher<Set<SocketAddress>> resolve(String url);
 
     default <Req, Resp>
     Publisher<Set<ServiceFactory<Req, Resp>>> resolveFactory(
-        URL url,
+        String url,
         TransportConnector<Req, Resp> connector
     ) {
         return Resolvers.resolveFactory(resolve(url), connector);
