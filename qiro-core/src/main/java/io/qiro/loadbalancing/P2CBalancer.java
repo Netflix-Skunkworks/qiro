@@ -25,7 +25,7 @@ public class P2CBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
                     buffer.clear();
                     for (ServiceFactory<Req, Resp> factory: current) {
                         if (!set.contains(factory)) {
-                            factory.close().subscribe(new EmptySubscriber<>());
+                            factory.close().subscribe(EmptySubscriber.INSTANCE);
                         } else {
                             buffer.add(new WeightedServiceFactory<>(factory));
                         }

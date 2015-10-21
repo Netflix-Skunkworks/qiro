@@ -28,7 +28,7 @@ public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
                     factories.clear();
                     for (ServiceFactory<Req, Resp> factory: current) {
                         if (!set.contains(factory)) {
-                            factory.close().subscribe(new EmptySubscriber<>());
+                            factory.close().subscribe(EmptySubscriber.INSTANCE);
                         } else {
                             factories.add(factory);
                         }
@@ -72,7 +72,7 @@ public class RoundRobinBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
         return s -> {
             synchronized (RoundRobinBalancer.this) {
                 factories.forEach(svc ->
-                        svc.close().subscribe(new EmptySubscriber<>())
+                        svc.close().subscribe(EmptySubscriber.INSTANCE)
                 );
             }
         };

@@ -42,13 +42,13 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
 
                             @Override
                             public void onError(Throwable responseFailure) {
-                                service.close().subscribe(new EmptySubscriber<>());
+                                service.close().subscribe(EmptySubscriber.INSTANCE);
                                 responseSubscriber.onError(responseFailure);
                             }
 
                             @Override
                             public void onComplete() {
-                                service.close().subscribe(new EmptySubscriber<>());
+                                service.close().subscribe(EmptySubscriber.INSTANCE);
                                 responseSubscriber.onComplete();
                             }
                         });

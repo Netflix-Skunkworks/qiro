@@ -82,7 +82,7 @@ public class Resolvers {
             return s -> {
                 synchronized (services) {
                     services.forEach(svc ->
-                        svc.close().subscribe(new EmptySubscriber<>())
+                        svc.close().subscribe(EmptySubscriber.INSTANCE)
                     );
                 }
             };

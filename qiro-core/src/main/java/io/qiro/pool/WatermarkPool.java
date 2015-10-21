@@ -122,7 +122,7 @@ public class WatermarkPool<Req, Resp> implements ServiceFactory<Req,Resp> {
             createdServices = 2 * high;
             waiters.forEach(sub -> sub.onError(
                 new Exception("Closing the WatermarkPool, killing the waiters")));
-            services.forEach(svc -> svc.close().subscribe(new EmptySubscriber<>()));
+            services.forEach(svc -> svc.close().subscribe(EmptySubscriber.INSTANCE));
             subscriber.onNext(null);
             subscriber.onComplete();
         };
