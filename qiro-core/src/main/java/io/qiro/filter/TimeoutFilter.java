@@ -8,9 +8,7 @@ import org.reactivestreams.Subscription;
 
 import java.util.concurrent.*;
 
-public class TimeoutFilter<Request, Response>
-    implements Filter<Request, Request, Response, Response>
-{
+public class TimeoutFilter<Req, Resp> implements Filter<Req, Req, Resp, Resp> {
     private final static ScheduledExecutorService EXECUTOR =
         Executors.newScheduledThreadPool(1, runnable -> {
             Thread thread = new Thread(runnable, "Timer-Thread");
@@ -25,14 +23,14 @@ public class TimeoutFilter<Request, Response>
     }
 
     @Override
-    public Publisher<Response> apply(Publisher<Request> inputs, Service<Request, Response> service) {
-        return new Publisher<Response>() {
+    public Publisher<Resp> apply(Publisher<Req> inputs, Service<Req, Resp> service) {
+        return new Publisher<Resp>() {
             private ScheduledFuture<?> schedule = null;
             private volatile Subscription respSubscription = null;
 
             @Override
-            public void subscribe(Subscriber<? super Response> subscriber) {
-                service.apply(inputs).subscribe(new Subscriber<Response>() {
+            public void subscribe(Subscriber<? super Resp> subscriber) {
+                service.apply(inputs).subscribe(new Subscriber<Resp>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         respSubscription = s;
@@ -41,8 +39,8 @@ public class TimeoutFilter<Request, Response>
                     }
 
                     @Override
-                    public void onNext(Response response) {
-                        subscriber.onNext(response);
+                    public void onNext(Resp resp) {
+                        subscriber.onNext(resp);
                     }
 
                     @Override
@@ -65,8 +63,8 @@ public class TimeoutFilter<Request, Response>
 
                     private void armTimer() {
                         schedule = EXECUTOR.schedule(() -> {
-                            subscriber.onError(new Exception("timeout"));
                             respSubscription.cancel();
+                            subscriber.onError(new Exception("timeout"));
                         }, maxDurationMs, TimeUnit.MILLISECONDS);
                     }
                 });

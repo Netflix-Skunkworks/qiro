@@ -2,16 +2,34 @@ package io.qiro;
 
 import org.reactivestreams.Publisher;
 
-public interface Service<Request, Response> {
+import static io.qiro.util.Publishers.just;
+import static io.qiro.util.Publishers.map;
 
-    public Publisher<Response> apply(Publisher<Request> inputs);
+public interface Service<Req, Resp> {
+
+    public Publisher<Resp> apply(Publisher<Req> inputs);
 
     // 5 Interaction models
-    //    public Observable<Void> fireAndForget(final Request request);
-    //    public Observable<Response> requestResponse(final Request request);
-    //    public Observable<Response> requestStream(final Request request);
-    //    public Observable<Response> requestSubscription(final Request request);
-    //    public Observable<Response> requestChannel(final Observable<Request> requests);
+    default Publisher<Void> fireAndForget(Req request) {
+        return subscriber -> map(requestResponse(request), x -> null);
+    }
+
+    default Publisher<Resp> requestResponse(Req request) {
+        return requestStream(request);
+    }
+
+    default Publisher<Resp> requestStream(Req request) {
+        return requestSubscription(request);
+    }
+
+
+    default Publisher<Resp> requestSubscription(Req request) {
+        return requestChannel(just(request));
+    }
+
+    default Publisher<Resp> requestChannel(Publisher<Req> inputs) {
+        return apply(inputs);
+    }
 
     public double availability();
     public Publisher<Void> close();

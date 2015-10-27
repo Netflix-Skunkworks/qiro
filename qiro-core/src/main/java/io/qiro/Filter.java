@@ -4,48 +4,148 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-public interface Filter<FilterRequest, Request, Response, FilterResponse> {
-    public
-    Publisher<FilterResponse>
-    apply(
-        Publisher<FilterRequest> inputs,
-        Service<Request, Response> service
+import static io.qiro.util.Publishers.just;
+
+public interface Filter<FilterReq, Req, Resp, FilterResp> {
+
+    public Publisher<FilterResp> apply(
+        Publisher<FilterReq> inputs,
+        Service<Req, Resp> service
     );
 
-    //   FilterRequest  --> Request  -->   FilterRequest2
-    //                  this         other
-    //   FilterResponse <-- Response <--   FilterResponse2
-    //
-    default <FilterRequest2, FilterResponse2>
-    Filter<FilterRequest, FilterRequest2, FilterResponse2, FilterResponse>
-    andThen(
-        Filter<Request, FilterRequest2, FilterResponse2, Response> other
+    default Publisher<Void> fireAndForget(
+        FilterReq input,
+        Service<Req, Resp> service
     ) {
-        return new Filter<FilterRequest, FilterRequest2, FilterResponse2, FilterResponse>() {
-            @Override
-            public Publisher<FilterResponse>
-            apply(
-                Publisher<FilterRequest> inputs,
-                Service<FilterRequest2, FilterResponse2> service
-            ) {
-                Service<Request, Response> innerService = other.andThen(service);
-                Service<FilterRequest, FilterResponse> outerService =
-                    Filter.this.andThen(innerService);
+        return s -> {
+            requestResponse(input, service);
+            s.onComplete();
+        };
+    }
 
-                return outerService.apply(inputs);
+    default Publisher<FilterResp> requestResponse(
+        FilterReq input,
+        Service<Req, Resp> service
+    ) {
+        return requestStream(input, service);
+    }
+
+    default Publisher<FilterResp> requestStream(
+        FilterReq input,
+        Service<Req, Resp> service
+    ) {
+        return requestSubscription(input, service);
+    }
+
+    default Publisher<FilterResp> requestSubscription(
+        FilterReq input,
+        Service<Req, Resp> service
+    ) {
+        return requestChannel(just(input), service);
+    }
+
+    default Publisher<FilterResp> requestChannel(
+        Publisher<FilterReq> inputs,
+        Service<Req, Resp> service
+    ) {
+        return apply(inputs, service);
+    }
+
+    //   FilterReq  --> Req  -->   FilterReq2
+    //                  this         other
+    //   FilterResp <-- Resp <--   FilterResp2
+    //
+    default <FilterReq2, FilterResp2> Filter<FilterReq, FilterReq2, FilterResp2, FilterResp> andThen(
+        Filter<Req, FilterReq2, FilterResp2, Resp> other
+    ) {
+        return new Filter<FilterReq, FilterReq2, FilterResp2, FilterResp>() {
+            @Override
+            public Publisher<FilterResp> apply(
+                Publisher<FilterReq> inputs,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).apply(inputs);
+            }
+
+            @Override
+            public Publisher<Void> fireAndForget(
+                FilterReq input,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).fireAndForget(input);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestResponse(
+                FilterReq input,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).requestResponse(input);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestStream(
+                FilterReq input,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).requestStream(input);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestSubscription(
+                FilterReq input,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).requestSubscription(input);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestChannel(
+                Publisher<FilterReq> inputs,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return filteredService(other, service).requestChannel(inputs);
+            }
+
+            private Service<FilterReq, FilterResp> filteredService(
+                Filter<Req, FilterReq2, FilterResp2, Resp> other,
+                Service<FilterReq2, FilterResp2> service
+            ) {
+                return Filter.this.andThen(other.andThen(service));
             }
         };
     }
 
-    default
-    Service<FilterRequest, FilterResponse>
-    andThen(
-        Service<Request, Response> service
-    ) {
-        return new Service<FilterRequest, FilterResponse>() {
+    default Service<FilterReq, FilterResp> andThen(Service<Req, Resp> service) {
+        return new Service<FilterReq, FilterResp>() {
             @Override
-            public Publisher<FilterResponse> apply(Publisher<FilterRequest> requests) {
+            public Publisher<FilterResp> apply(Publisher<FilterReq> requests) {
                 return Filter.this.apply(requests, service);
+            }
+
+            @Override
+            public Publisher<Void> fireAndForget(FilterReq filterReq) {
+                return Filter.this.fireAndForget(filterReq, service);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestResponse(FilterReq filterReq) {
+                return Filter.this.requestResponse(filterReq, service);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestStream(FilterReq filterReq) {
+                return Filter.this.requestStream(filterReq, service);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestSubscription(FilterReq filterReq) {
+                return Filter.this.requestSubscription(filterReq, service);
+            }
+
+            @Override
+            public Publisher<FilterResp> requestChannel(Publisher<FilterReq> inputs) {
+                return Filter.this.requestChannel(inputs, service);
             }
 
             @Override
@@ -60,52 +160,44 @@ public interface Filter<FilterRequest, Request, Response, FilterResponse> {
         };
     }
 
-    default
-    ServiceFactory<FilterRequest, FilterResponse>
-    andThen(
-        ServiceFactory<Request, Response> other
-    ) {
-        return new ServiceFactory<FilterRequest, FilterResponse>() {
+    default ServiceFactory<FilterReq, FilterResp> andThen(ServiceFactory<Req, Resp> factory) {
+        return new ServiceFactory<FilterReq, FilterResp>() {
             @Override
-            public Publisher<Service<FilterRequest, FilterResponse>> apply() {
-                return new Publisher<Service<FilterRequest, FilterResponse>>() {
-                    @Override
-                    public void subscribe(Subscriber<? super Service<FilterRequest, FilterResponse>> s) {
-                        other.apply().subscribe(new Subscriber<Service<Request, Response>>() {
-                            @Override
-                            public void onSubscribe(Subscription subscription) {
-                                s.onSubscribe(subscription);
-                            }
+            public Publisher<Service<FilterReq, FilterResp>> apply() {
+                return svcSubscriber ->
+                    factory.apply().subscribe(new Subscriber<Service<Req, Resp>>() {
+                        @Override
+                        public void onSubscribe(Subscription subscription) {
+                            svcSubscriber.onSubscribe(subscription);
+                        }
 
-                            @Override
-                            public void onNext(Service<Request, Response> service) {
-                                final Service<FilterRequest, FilterResponse> filterService =
-                                    Filter.this.andThen(service);
-                                s.onNext(filterService);
-                            }
+                        @Override
+                        public void onNext(Service<Req, Resp> service) {
+                            final Service<FilterReq, FilterResp> filterService =
+                                Filter.this.andThen(service);
+                            svcSubscriber.onNext(filterService);
+                        }
 
-                            @Override
-                            public void onError(Throwable t) {
-                                s.onError(t);
-                            }
+                        @Override
+                        public void onError(Throwable t) {
+                            svcSubscriber.onError(t);
+                        }
 
-                            @Override
-                            public void onComplete() {
-                                s.onComplete();
-                            }
-                        });
-                    }
-                };
+                        @Override
+                        public void onComplete() {
+                            svcSubscriber.onComplete();
+                        }
+                    });
             }
 
             @Override
             public double availability() {
-                return other.availability();
+                return factory.availability();
             }
 
             @Override
             public Publisher<Void> close() {
-                return other.close();
+                return factory.close();
             }
         };
     }

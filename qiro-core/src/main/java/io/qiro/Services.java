@@ -6,6 +6,8 @@ import org.reactivestreams.Subscription;
 
 import java.util.function.Supplier;
 
+import static io.qiro.util.Publishers.just;
+
 public class Services {
     public static Supplier<Double> ALWAYS_AVAILABLE = () -> 1.0;
     public static Supplier<Void> EMPTY_CLOSE_FN = () -> null;
@@ -27,43 +29,57 @@ public class Services {
         Supplier<Double> availability
     ) {
         return new Service<Req, Resp>() {
-            @Override
             public Publisher<Resp> apply(Publisher<Req> inputs) {
-                return new Publisher<Resp>() {
+                return subscriber -> inputs.subscribe(new Subscriber<Req>() {
+                    private Subscription subscription;
+
                     @Override
-                    public void subscribe(Subscriber<? super Resp> subscriber) {
-                        inputs.subscribe(new Subscriber<Req>() {
-                            private Subscription subscription;
-
-                            @Override
-                            public void onSubscribe(Subscription s) {
-                                subscription = s;
-                                subscriber.onSubscribe(s);
-                            }
-
-                            @Override
-                            public void onNext(Req input) {
-                                try {
-                                    Resp resp = fn.apply(input);
-                                    subscriber.onNext(resp);
-                                } catch (Throwable ex) {
-                                    onError(ex);
-                                }
-                            }
-
-                            @Override
-                            public void onError(Throwable t) {
-                                subscriber.onError(t);
-                                subscription.cancel();
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                subscriber.onComplete();
-                            }
-                        });
+                    public void onSubscribe(Subscription s) {
+                        subscription = s;
+                        subscriber.onSubscribe(s);
                     }
-                };
+
+                    @Override
+                    public void onNext(Req input) {
+                        try {
+                            Resp resp = fn.apply(input);
+                            subscriber.onNext(resp);
+                        } catch (Throwable ex) {
+                            onError(ex);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        subscriber.onError(t);
+                        subscription.cancel();
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        subscriber.onComplete();
+                    }
+                });
+            }
+
+            @Override
+            public Publisher<Resp> requestResponse(Req req) {
+                return apply(just(req));
+            }
+
+            @Override
+            public Publisher<Resp> requestStream(Req req) {
+                return apply(just(req));
+            }
+
+            @Override
+            public Publisher<Resp> requestSubscription(Req req) {
+                return apply(just(req));
+            }
+
+            @Override
+            public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
+                return apply(inputs);
             }
 
             @Override

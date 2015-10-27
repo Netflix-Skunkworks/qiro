@@ -25,16 +25,10 @@ public class Filters {
         ThrowableFunction<FilterReq, Req> fnIn,
         ThrowableFunction<Resp, FilterResp> fnOut
     ) {
-        return new Filter<FilterReq, Req, Resp, FilterResp>() {
-            @Override
-            public Publisher<FilterResp> apply(
-                Publisher<FilterReq> inputs,
-                Service<Req, Resp> service
-            ) {
-                Publisher<Req> requests = map(inputs, fnIn);
-                Publisher<Resp> respPublisher = service.apply(requests);
-                return map(respPublisher, fnOut);
-            }
+        return (inputs, service) -> {
+            Publisher<Req> requests = map(inputs, fnIn);
+            Publisher<Resp> outputs = service.apply(requests);
+            return map(outputs, fnOut);
         };
     }
 }
