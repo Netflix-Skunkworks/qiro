@@ -6,6 +6,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -172,41 +173,44 @@ public class Publishers {
     }
 
 
-    public static <T> Publisher<List<T>> concat(List<Publisher<T>> inputs) {
-        return new Publisher<List<T>>() {
-            private List<T> buffer = new ArrayList<>();
+    public static <T> Publisher<T> concat(Publisher<T>... inputs) {
+        return concat(Arrays.asList(inputs));
+    }
+
+    public static <T> Publisher<T> concat(List<Publisher<T>> inputs) {
+        return new Publisher<T>() {
+            private int i = 0;
 
             @Override
-            public void subscribe(Subscriber<? super List<T>> subscriber) {
-                for (int i = 0; i < inputs.size(); i++) {
-                    Publisher<T> pub = inputs.get(i);
-                    final boolean last = i == inputs.size() - 1;
-                    pub.subscribe(new Subscriber<T>() {
-                        @Override
-                        public void onSubscribe(Subscription s) {
-                            subscriber.onSubscribe(s);
-                        }
+            public void subscribe(Subscriber<? super T> subscriber) {
+                Publisher<T> current = inputs.get(i);
+                boolean last = i == inputs.size() - 1;
+                current.subscribe(new Subscriber<T>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        subscriber.onSubscribe(s);
+                    }
 
-                        @Override
-                        public void onNext(T t) {
-                            buffer.add(t);
-                        }
+                    @Override
+                    public void onNext(T t) {
+                        subscriber.onNext(t);
+                    }
 
-                        @Override
-                        public void onError(Throwable t) {
-                            subscriber.onError(t);
-                            // TODO: Should break the for loop
-                        }
+                    @Override
+                    public void onError(Throwable t) {
+                        subscriber.onError(t);
+                    }
 
-                        @Override
-                        public void onComplete() {
-                            if (last) {
-                                subscriber.onNext(buffer);
-                                subscriber.onComplete();
-                            }
+                    @Override
+                    public void onComplete() {
+                        i += 1;
+                        if (!last) {
+                            subscribe(subscriber);
+                        } else {
+                            subscriber.onComplete();
                         }
-                    });
-                }
+                    }
+                });
             }
         };
     }

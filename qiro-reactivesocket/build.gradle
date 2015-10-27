@@ -16,6 +16,6 @@
  */
 dependencies {
     compile project(':qiro-core')
-    compile 'io.reactivesocket:reactivesocket:0.0.1-SNAPSHOT'
+    compile 'io.reactivesocket:reactivesocket:0.0.1'
     compile 'io.reactivesocket:reactivesocket-websocket-rxnetty:0.0.1-SNAPSHOT'
 }

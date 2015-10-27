@@ -31,8 +31,8 @@ configure(subprojects) {
     apply plugin: 'java'
 
     repositories {
-        jcenter()
         mavenCentral()
+        jcenter()
         maven { url 'https://oss.jfrog.org/libs-snapshot' }
     }
 
