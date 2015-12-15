@@ -17,6 +17,6 @@ public class StatsFilterTest {
         Service<Integer, String> toStringService =
             statsFilter.andThen(Services.fromFunction(Object::toString));
 
-        List<String> strings = toList(toStringService.apply(from(1, 2, 3)));
+        List<String> strings = toList(toStringService.requestChannel(from(1, 2, 3)));
     }
 }

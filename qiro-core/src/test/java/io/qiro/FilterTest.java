@@ -26,8 +26,8 @@ public class FilterTest {
 
 
         Publisher<Integer> inputs = from(1, 2, 3, 4, 5);
-        Publisher<String> outputs = operation.apply(inputs);
-        Publisher<String> outputs2 = operation2.apply(inputs);
+        Publisher<String> outputs = operation.requestChannel(inputs);
+        Publisher<String> outputs2 = operation2.requestChannel(inputs);
 
         List<String> strings = toList(outputs);
         List<String> strings2 = toList(outputs2);
@@ -52,7 +52,7 @@ public class FilterTest {
                 .toService();
 
         Publisher<String> stringPublisher2 =
-            squareToString.apply(from(1, 2, 3, 4, 5));
+            squareToString.requestChannel(from(1, 2, 3, 4, 5));
         List<String> strings = toList(stringPublisher2);
         System.out.println(strings);
         assertTrue(strings.equals(Arrays.asList("1", "4", "9", "16", "25")));

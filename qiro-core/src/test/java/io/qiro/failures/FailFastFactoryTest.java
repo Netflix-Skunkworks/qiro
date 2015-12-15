@@ -3,21 +3,17 @@ package io.qiro.failures;
 import io.qiro.Service;
 import io.qiro.ServiceFactory;
 import io.qiro.Services;
+import io.qiro.testing.FakeTimer;
 import io.qiro.util.EmptySubscriber;
-import io.qiro.util.Timer;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.qiro.util.Publishers.just;
 import static org.junit.Assert.*;
 
 public class FailFastFactoryTest {
+
     @Test(timeout = 10_000L)
     public void testFailFastFactory() throws InterruptedException {
 
@@ -49,54 +45,22 @@ public class FailFastFactoryTest {
                 };
             }
         };
-
-//        ServiceFactory<Integer, String> factory =
-//            ServiceFactories.fromFunctions(
-//                () -> Services.<Integer, String>fromFunction(x -> {
-//                    if (i.getAndIncrement() < 2) {
-//                        throw new io.qiro.failures.Exception();
-//                    } else {
-//                        return "OK: " + x;
-//                    }
-//                }),
-//                () -> null
-//            );
-
-
-        Timer timer = new Timer() {
-            ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-
-            @Override
-            public TimerTask schedule(Runnable task, long delay, TimeUnit unit) {
-                ScheduledFuture<?> future = executor.schedule(task, delay, unit);
-                return new TimerTask() {
-                    @Override
-                    public void cancel() {
-                        future.cancel(true);
-                    }
-
-                    @Override
-                    public boolean isCancel() {
-                        return future.isCancelled();
-                    }
-                };
-            }
-        };
+        FakeTimer timer = new FakeTimer();
 
         Service<Integer, String> service = new FailFastFactory<>(factory, timer).toService();
         Double availability = service.availability();
         assertTrue(availability == 1.0);
 
-        service.apply(just(1)).subscribe(EmptySubscriber.INSTANCE);
+        service.requestResponse(1).subscribe(EmptySubscriber.INSTANCE);
         availability = service.availability();
         assertTrue(availability == 0.0);
 
-        service.apply(just(1)).subscribe(EmptySubscriber.INSTANCE);
+        service.requestResponse(1).subscribe(EmptySubscriber.INSTANCE);
         availability = service.availability();
         assertTrue(availability == 0.0);
 
         factoryUp.set(true);
-        Thread.sleep(100);
+        timer.advance();
 
         availability = service.availability();
         assertTrue(availability == 1.0);

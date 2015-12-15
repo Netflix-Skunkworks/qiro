@@ -51,9 +51,9 @@ public class WatermarkPoolTest {
         LoggerSubscriber<Object> subscriber2 = new LoggerSubscriber<>("request 2");
         LoggerSubscriber<Object> subscriber3 = new LoggerSubscriber<>("request 3");
 
-        service.apply(just(0)).subscribe(subscriber0);
-        service.apply(just(1)).subscribe(subscriber1);
-        service.apply(just(2)).subscribe(subscriber2); // -> error maxCapacity
+        service.requestResponse(0).subscribe(subscriber0);
+        service.requestResponse(1).subscribe(subscriber1);
+        service.requestResponse(2).subscribe(subscriber2); // -> error maxCapacity
         assertFalse(subscriber0.isComplete());
         assertFalse(subscriber1.isComplete());
         assertTrue(subscriber2.isError());
@@ -74,7 +74,7 @@ public class WatermarkPoolTest {
         assertTrue(subscriber1.isComplete());
         assertTrue(testingSvc1.isOpen()); // > low watermark, svc stays open
 
-        service.apply(just(3)).subscribe(subscriber3);
+        service.requestResponse(3).subscribe(subscriber3);
         testingSvc0.respond();
         testingSvc0.complete();
     }
@@ -118,10 +118,10 @@ public class WatermarkPoolTest {
         LoggerSubscriber<Object> subscriber2 = new LoggerSubscriber<>("request 2");
         LoggerSubscriber<Object> subscriber3 = new LoggerSubscriber<>("request 3");
 
-        service.apply(just(0)).subscribe(subscriber0);
-        service.apply(just(1)).subscribe(subscriber1);
-        service.apply(just(2)).subscribe(subscriber2); // -> svc is buffered
-        service.apply(just(3)).subscribe(subscriber3); // -> error max # services
+        service.requestResponse(0).subscribe(subscriber0);
+        service.requestResponse(1).subscribe(subscriber1);
+        service.requestResponse(2).subscribe(subscriber2); // -> svc is buffered
+        service.requestResponse(3).subscribe(subscriber3); // -> error max # services
         assertFalse(subscriber0.isComplete());
         assertFalse(subscriber1.isComplete());
         assertFalse(subscriber2.isComplete());

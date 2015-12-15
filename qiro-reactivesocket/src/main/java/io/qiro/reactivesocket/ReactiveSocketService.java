@@ -21,7 +21,7 @@ public class ReactiveSocketService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> inputs) {
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
         Publisher<Payload> payloadInputs = Publishers.map(inputs,
             req -> new Payload() {
                 @Override
@@ -40,7 +40,6 @@ public class ReactiveSocketService<Req, Resp> implements Service<Req, Resp> {
 
         return Publishers.map(payloadOutput,
             payload -> codec.decode(payload.getData()));
-
     }
 
     @Override

@@ -38,17 +38,17 @@ public class FailureAccrualDetectorTest {
         // 1 success for the service factory application
         // 1 failure for the service application
         // failures: 1, successes: 1  ===>  ratio = 1 / 2 = 0.5
-        service.apply(just(1)).subscribe(EmptySubscriber.INSTANCE);
+        service.requestResponse(1).subscribe(EmptySubscriber.INSTANCE);
         Double availability = myFactory.availability();
         assertTrue(availability - 0.5 < 0.01);
 
         // failures: 2, successes: 1  ===>  ratio = 1 / 3 = 0.333
-        service.apply(just(2)).subscribe(EmptySubscriber.INSTANCE);
+        service.requestResponse(2).subscribe(EmptySubscriber.INSTANCE);
         availability = myFactory.availability();
         assertTrue(availability - 0.333 < 0.01);
 
         // failures: 2, successes: 2  ===>  ratio = 2 / 4 = 0.5
-        service.apply(just(3)).subscribe(EmptySubscriber.INSTANCE);
+        service.requestResponse(3).subscribe(EmptySubscriber.INSTANCE);
         availability = myFactory.availability();
         assertTrue(availability - 0.5 < 0.01);
 

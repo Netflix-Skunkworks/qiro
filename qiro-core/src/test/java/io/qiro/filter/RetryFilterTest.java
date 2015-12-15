@@ -45,7 +45,7 @@ public class RetryFilterTest {
             .andThen(failFirstFilter)
             .andThen(Services.fromFunction(Object::toString));
 
-        List<String> strings = toList(service.apply(from(1, 2, 3)));
+        List<String> strings = toList(service.requestChannel(from(1, 2, 3)));
 
         if (expectResponse) {
             assertTrue(strings.size() == 3);

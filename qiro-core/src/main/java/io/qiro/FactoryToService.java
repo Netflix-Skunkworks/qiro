@@ -16,68 +16,6 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> inputs) {
-        return responseSubscriber -> {
-            Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
-            servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
-                private int count = 0;
-
-                @Override
-                public void onSubscribe(Subscription subscription) {
-                    // request only one service
-                    subscription.request(1L);
-                }
-
-                @Override
-                public void onNext(Service<Req, Resp> service) {
-                    if (count > 1) {
-                        throw new IllegalStateException("Factory produced more than 1 Service!");
-                    }
-                    count += 1;
-
-                    Publisher<Resp> responses = service.apply(inputs);
-                    responses.subscribe(new Subscriber<Resp>() {
-                        @Override
-                        public void onSubscribe(Subscription s) {
-                            responseSubscriber.onSubscribe(s);
-                        }
-
-                        @Override
-                        public void onNext(Resp response) {
-                            responseSubscriber.onNext(response);
-                        }
-
-                        @Override
-                        public void onError(Throwable responseFailure) {
-                            service.close().subscribe(EmptySubscriber.INSTANCE);
-                            responseSubscriber.onError(responseFailure);
-                        }
-
-                        @Override
-                        public void onComplete() {
-                            service.close().subscribe(EmptySubscriber.INSTANCE);
-                            responseSubscriber.onComplete();
-                        }
-                    });
-                }
-
-                @Override
-                public void onError(Throwable serviceCreationFailure) {
-                    responseSubscriber.onError(serviceCreationFailure);
-                }
-
-                @Override
-                public void onComplete() {
-                    if (count != 1) {
-                        throw new IllegalStateException("Factory completed with number of " +
-                            "produced services equal to " + count);
-                    }
-                }
-            });
-        };
-    }
-
-    @Override
     public Publisher<Void> fireAndForget(Req req) {
         return responseSubscriber -> {
             Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
@@ -156,7 +94,64 @@ public class FactoryToService<Req, Resp> implements Service<Req, Resp> {
 
     @Override
     public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
-        return apply(inputs);
+        return responseSubscriber -> {
+            Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
+            servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
+                private int count = 0;
+
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    // request only one service
+                    subscription.request(1L);
+                }
+
+                @Override
+                public void onNext(Service<Req, Resp> service) {
+                    if (count > 1) {
+                        throw new IllegalStateException("Factory produced more than 1 Service!");
+                    }
+                    count += 1;
+
+                    Publisher<Resp> responses = service.requestChannel(inputs);
+                    responses.subscribe(new Subscriber<Resp>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                            responseSubscriber.onSubscribe(s);
+                        }
+
+                        @Override
+                        public void onNext(Resp response) {
+                            responseSubscriber.onNext(response);
+                        }
+
+                        @Override
+                        public void onError(Throwable responseFailure) {
+                            service.close().subscribe(EmptySubscriber.INSTANCE);
+                            responseSubscriber.onError(responseFailure);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            service.close().subscribe(EmptySubscriber.INSTANCE);
+                            responseSubscriber.onComplete();
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(Throwable serviceCreationFailure) {
+                    responseSubscriber.onError(serviceCreationFailure);
+                }
+
+                @Override
+                public void onComplete() {
+                    if (count != 1) {
+                        throw new IllegalStateException("Factory completed with number of " +
+                            "produced services equal to " + count);
+                    }
+                }
+            });
+        };
     }
 
     @Override

@@ -23,36 +23,32 @@ public class ThreadedService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> inputs) {
-        return new Publisher<Resp>() {
-            @Override
-            public void subscribe(Subscriber<? super Resp> subscriber) {
-                EXECUTOR.submit(() -> {
-                    inputs.subscribe(new Subscriber<Req>() {
-                        @Override
-                        public void onSubscribe(Subscription s) {
-                            subscriber.onSubscribe(s);
-                        }
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
+        return subscriber ->
+            EXECUTOR.submit(() -> {
+                inputs.subscribe(new Subscriber<Req>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        subscriber.onSubscribe(s);
+                    }
 
-                        @Override
-                        public void onNext(Req req) {
-                            Resp resp = function.apply(req);
-                            subscriber.onNext(resp);
-                        }
+                    @Override
+                    public void onNext(Req req) {
+                        Resp resp = function.apply(req);
+                        subscriber.onNext(resp);
+                    }
 
-                        @Override
-                        public void onError(Throwable t) {
-                            subscriber.onError(t);
-                        }
+                    @Override
+                    public void onError(Throwable t) {
+                        subscriber.onError(t);
+                    }
 
-                        @Override
-                        public void onComplete() {
-                            subscriber.onComplete();
-                        }
-                    });
+                    @Override
+                    public void onComplete() {
+                        subscriber.onComplete();
+                    }
                 });
-            }
-        };
+            });
     }
 
     @Override

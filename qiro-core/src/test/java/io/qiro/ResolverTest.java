@@ -48,10 +48,10 @@ public class ResolverTest {
 
         Service<Integer, String> service = new RoundRobinBalancer<>(factories).toService();
 
-        service.apply(just(1)).subscribe(new LoggerSubscriber<>("req 1"));
+        service.requestResponse(1).subscribe(new LoggerSubscriber<>("req 1"));
         assertEquals(1, svc_1.queueSize() + svc_2.queueSize());
 
-        service.apply(just(2)).subscribe(new LoggerSubscriber<>("req 2"));
+        service.requestResponse(2).subscribe(new LoggerSubscriber<>("req 2"));
         assertEquals(1, svc_1.queueSize());
         assertEquals(1, svc_2.queueSize());
 

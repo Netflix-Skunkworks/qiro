@@ -2,6 +2,7 @@ package io.qiro.filter;
 
 import io.qiro.Filter;
 import io.qiro.Service;
+import io.qiro.util.Timer;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -17,20 +18,22 @@ public class TimeoutFilter<Req, Resp> implements Filter<Req, Req, Resp, Resp> {
         });
 
     private final long maxDurationMs;
+    private Timer timer;
 
-    public TimeoutFilter(long maxDurationMs) {
+    public TimeoutFilter(long maxDurationMs, Timer timer) {
         this.maxDurationMs = maxDurationMs;
+        this.timer = timer;
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> inputs, Service<Req, Resp> service) {
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs, Service<Req, Resp> service) {
         return new Publisher<Resp>() {
-            private ScheduledFuture<?> schedule = null;
+            Timer.TimerTask timerTask = null;
             private volatile Subscription respSubscription = null;
 
             @Override
             public void subscribe(Subscriber<? super Resp> subscriber) {
-                service.apply(inputs).subscribe(new Subscriber<Resp>() {
+                service.requestChannel(inputs).subscribe(new Subscriber<Resp>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         respSubscription = s;
@@ -56,13 +59,13 @@ public class TimeoutFilter<Req, Resp> implements Filter<Req, Req, Resp, Resp> {
                     }
 
                     private void cancelTimer() {
-                        if (schedule != null) {
-                            schedule.cancel(false);
+                        if (timerTask != null) {
+                            timerTask.cancel();
                         }
                     }
 
                     private void armTimer() {
-                        schedule = EXECUTOR.schedule(() -> {
+                        timerTask = timer.schedule(() -> {
                             respSubscription.cancel();
                             subscriber.onError(new Exception("timeout"));
                         }, maxDurationMs, TimeUnit.MILLISECONDS);

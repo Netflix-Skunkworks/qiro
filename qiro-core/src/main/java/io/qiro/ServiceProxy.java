@@ -2,16 +2,36 @@ package io.qiro;
 
 import org.reactivestreams.Publisher;
 
-public class ServiceProxy<Request, Response> implements Service<Request, Response> {
-    protected Service<Request, Response> underlying;
+public class ServiceProxy<Req, Resp> implements Service<Req, Resp> {
+    protected Service<Req, Resp> underlying;
 
-    public ServiceProxy(Service<Request, Response> underlying) {
+    public ServiceProxy(Service<Req, Resp> underlying) {
         this.underlying = underlying;
     }
 
     @Override
-    public Publisher<Response> apply(Publisher<Request> inputs) {
-        return underlying.apply(inputs);
+    public Publisher<Void> fireAndForget(Req request) {
+        return underlying.fireAndForget(request);
+    }
+
+    @Override
+    public Publisher<Resp> requestResponse(Req request) {
+        return underlying.requestResponse(request);
+    }
+
+    @Override
+    public Publisher<Resp> requestStream(Req request) {
+        return underlying.requestStream(request);
+    }
+
+    @Override
+    public Publisher<Resp> requestSubscription(Req request) {
+        return underlying.requestSubscription(request);
+    }
+
+    @Override
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
+        return underlying.requestChannel(inputs);
     }
 
     @Override

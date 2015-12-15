@@ -50,23 +50,20 @@ public class TestingService<Req, Resp> implements Service<Req, Resp> {
     }
 
     @Override
-    public Publisher<Resp> apply(Publisher<Req> requests) {
+    public Publisher<Resp> requestChannel(Publisher<Req> requests) {
         if (!open) {
             throw new IllegalStateException("applying on a close TestingService");
         }
-        return new Publisher<Resp>() {
-            @Override
-            public void subscribe(Subscriber<? super Resp> s) {
-                synchronized (TestingService.this) {
-                    StreamInfo info = new StreamInfo(s);
-                    requests.subscribe(new EmptySubscriber<Req>() {
-                        @Override
-                        public void onNext(Req req) {
-                            info.offer(req);
-                        }
-                    });
-                    streamInfos.add(info);
-                }
+        return subscriber -> {
+            synchronized (TestingService.this) {
+                StreamInfo info = new StreamInfo(subscriber);
+                requests.subscribe(new EmptySubscriber<Req>() {
+                    @Override
+                    public void onNext(Req req) {
+                        info.offer(req);
+                    }
+                });
+                streamInfos.add(info);
             }
         };
     }

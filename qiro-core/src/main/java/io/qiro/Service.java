@@ -6,10 +6,6 @@ import static io.qiro.util.Publishers.just;
 import static io.qiro.util.Publishers.map;
 
 public interface Service<Req, Resp> {
-
-    public Publisher<Resp> apply(Publisher<Req> inputs);
-
-    // 5 Interaction models
     default Publisher<Void> fireAndForget(Req request) {
         return subscriber -> map(requestResponse(request), x -> null);
     }
@@ -27,9 +23,7 @@ public interface Service<Req, Resp> {
         return requestChannel(just(request));
     }
 
-    default Publisher<Resp> requestChannel(Publisher<Req> inputs) {
-        return apply(inputs);
-    }
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs);
 
     public double availability();
     public Publisher<Void> close();

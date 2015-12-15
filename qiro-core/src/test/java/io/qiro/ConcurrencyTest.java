@@ -37,7 +37,7 @@ public class ConcurrencyTest {
             executor.submit(() -> {
                 Publisher<Integer> inputs = Publishers.range(0, 1000);
                 try {
-                    toList(service.apply(inputs));
+                    toList(service.requestChannel(inputs));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

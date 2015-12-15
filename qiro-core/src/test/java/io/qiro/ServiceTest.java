@@ -118,7 +118,7 @@ public class ServiceTest {
         Publisher<Double> doubles = from(1.0, 2.0, 3.0, 4.0, 5.0);
         Filter<Double, Integer, String, String> filter =
             Filters.fromFunction(x -> (int) (2 * x), str -> "'" + str + "'");
-        Publisher<String> apply = filter.apply(doubles, aService);
+        Publisher<String> apply = filter.requestChannel(doubles, aService);
         List<String> strings2 = toList(apply);
         assertTrue(strings2.equals(Arrays.asList(
             "'CHANNEL:2'", "'CHANNEL(+1):3'",
@@ -133,7 +133,7 @@ public class ServiceTest {
         private boolean closed = false;
 
         @Override
-        public Publisher<String> apply(Publisher<Integer> inputs) {
+        public Publisher<String> requestChannel(Publisher<Integer> inputs) {
             if (closed) {
                 throw new RuntimeException("Closed service!");
             }
@@ -205,11 +205,6 @@ public class ServiceTest {
                 subsriber.onNext("SUBSCRIPTION(+1):" + (integer + 1));
                 subsriber.onNext("SUBSCRIPTION(*2):" + (integer * 2));
             };
-        }
-
-        @Override
-        public Publisher<String> requestChannel(Publisher<Integer> inputs) {
-            return apply(inputs);
         }
 
         @Override

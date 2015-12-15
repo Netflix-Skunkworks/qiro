@@ -28,8 +28,8 @@ public class SingletonPoolTest {
         );
         Service<Integer, String> service = new SingletonPool<>(factory).toService();
 
-        service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
-        service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));
+        service.requestResponse(0).subscribe(new LoggerSubscriber<>("request 0"));
+        service.requestResponse(1).subscribe(new LoggerSubscriber<>("request 1"));
         testingService.respond();
         testingService.complete();
     }

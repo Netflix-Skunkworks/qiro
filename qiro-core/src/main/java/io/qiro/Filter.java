@@ -5,14 +5,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import static io.qiro.util.Publishers.just;
+import static io.qiro.util.Publishers.never;
 
 public interface Filter<FilterReq, Req, Resp, FilterResp> {
-
-    public Publisher<FilterResp> apply(
-        Publisher<FilterReq> inputs,
-        Service<Req, Resp> service
-    );
-
     default Publisher<Void> fireAndForget(
         FilterReq input,
         Service<Req, Resp> service
@@ -44,12 +39,10 @@ public interface Filter<FilterReq, Req, Resp, FilterResp> {
         return requestChannel(just(input), service);
     }
 
-    default Publisher<FilterResp> requestChannel(
+    public Publisher<FilterResp> requestChannel(
         Publisher<FilterReq> inputs,
         Service<Req, Resp> service
-    ) {
-        return apply(inputs, service);
-    }
+    );
 
     //   FilterReq  --> Req  -->   FilterReq2
     //                  this         other
@@ -59,14 +52,6 @@ public interface Filter<FilterReq, Req, Resp, FilterResp> {
         Filter<Req, FilterReq2, FilterResp2, Resp> other
     ) {
         return new Filter<FilterReq, FilterReq2, FilterResp2, FilterResp>() {
-            @Override
-            public Publisher<FilterResp> apply(
-                Publisher<FilterReq> inputs,
-                Service<FilterReq2, FilterResp2> service
-            ) {
-                return filteredService(other, service).apply(inputs);
-            }
-
             @Override
             public Publisher<Void> fireAndForget(
                 FilterReq input,
@@ -118,11 +103,6 @@ public interface Filter<FilterReq, Req, Resp, FilterResp> {
 
     default Service<FilterReq, FilterResp> andThen(Service<Req, Resp> service) {
         return new Service<FilterReq, FilterResp>() {
-            @Override
-            public Publisher<FilterResp> apply(Publisher<FilterReq> requests) {
-                return Filter.this.apply(requests, service);
-            }
-
             @Override
             public Publisher<Void> fireAndForget(FilterReq filterReq) {
                 return Filter.this.fireAndForget(filterReq, service);

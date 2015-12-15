@@ -7,6 +7,7 @@ import org.reactivestreams.Subscription;
 import java.util.function.Supplier;
 
 import static io.qiro.util.Publishers.just;
+import static io.qiro.util.Publishers.never;
 
 public class Services {
     public static Supplier<Double> ALWAYS_AVAILABLE = () -> 1.0;
@@ -29,7 +30,23 @@ public class Services {
         Supplier<Double> availability
     ) {
         return new Service<Req, Resp>() {
-            public Publisher<Resp> apply(Publisher<Req> inputs) {
+            @Override
+            public Publisher<Resp> requestResponse(Req req) {
+                return requestStream(req);
+            }
+
+            @Override
+            public Publisher<Resp> requestStream(Req req) {
+                return requestSubscription(req);
+            }
+
+            @Override
+            public Publisher<Resp> requestSubscription(Req req) {
+                return requestChannel(just(req));
+            }
+
+            @Override
+            public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
                 return subscriber -> inputs.subscribe(new Subscriber<Req>() {
                     private Subscription subscription;
 
@@ -60,26 +77,7 @@ public class Services {
                         subscriber.onComplete();
                     }
                 });
-            }
 
-            @Override
-            public Publisher<Resp> requestResponse(Req req) {
-                return apply(just(req));
-            }
-
-            @Override
-            public Publisher<Resp> requestStream(Req req) {
-                return apply(just(req));
-            }
-
-            @Override
-            public Publisher<Resp> requestSubscription(Req req) {
-                return apply(just(req));
-            }
-
-            @Override
-            public Publisher<Resp> requestChannel(Publisher<Req> inputs) {
-                return apply(inputs);
             }
 
             @Override

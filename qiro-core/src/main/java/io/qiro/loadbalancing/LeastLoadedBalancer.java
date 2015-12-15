@@ -2,102 +2,39 @@ package io.qiro.loadbalancing;
 
 import io.qiro.Service;
 import io.qiro.ServiceFactory;
-import io.qiro.util.Availabilities;
-import io.qiro.util.EmptySubscriber;
+import io.qiro.loadbalancing.loadestimator.LoadEstimator;
+import io.qiro.loadbalancing.loadestimator.MsgCountLoadEstimator;
+import io.qiro.loadbalancing.loadestimator.PeakEwmaLoadEstimator;
+import io.qiro.loadbalancing.selector.LinearMin;
+import io.qiro.loadbalancing.selector.P2C;
+import io.qiro.loadbalancing.selector.Selector;
 import org.reactivestreams.Publisher;
 
-import java.util.*;
+import java.util.Set;
+import java.util.function.Supplier;
 
-public class LeastLoadedBalancer<Req, Resp> implements ServiceFactory<Req,Resp> {
+public class LeastLoadedBalancer<Req, Resp> implements ServiceFactory<Req, Resp> {
+    private final BalancerFactory<Req,Resp> balancer;
 
-    final private List<WeightedServiceFactory<Req, Resp>> buffer;
-
-    public LeastLoadedBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factorySet) {
-        this.buffer = new ArrayList<>();
-        factorySet.subscribe(new EmptySubscriber<Set<ServiceFactory<Req, Resp>>>() {
-            @Override
-            public void onNext(Set<ServiceFactory<Req, Resp>> set) {
-                System.out.println("LeastLoadedBalancer: Storing ServiceFactory");
-                synchronized (LeastLoadedBalancer.this) {
-                    Set<ServiceFactory<Req, Resp>> current = new HashSet<>(buffer);
-                    buffer.clear();
-                    for (ServiceFactory<Req, Resp> factory: current) {
-                        if (!set.contains(factory)) {
-                            factory.close().subscribe(EmptySubscriber.INSTANCE);
-                        } else {
-                            buffer.add(new WeightedServiceFactory<>(factory));
-                        }
-                    }
-                    for (ServiceFactory<Req, Resp> factory: set) {
-                        if (!current.contains(factory)) {
-                            buffer.add(new WeightedServiceFactory<>(factory));
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    private WeightedServiceFactory<Req, Resp> findLeastLoaded() {
-        // buffer is garanteed to be non empty here
-        List<WeightedServiceFactory<Req, Resp>> leastLoadeds = new ArrayList<>();
-        leastLoadeds.add(buffer.get(0));
-        double minLoad = buffer.get(0).getLoad();
-        for (int i=1; i < buffer.size(); i++) {
-            WeightedServiceFactory<Req, Resp> factory = buffer.get(i);
-            double load = factory.getLoad();
-            if(load <= minLoad) {
-                leastLoadeds.clear();
-                leastLoadeds.add(factory);
-                minLoad = load;
-            }
-        }
-        int i = new Random().nextInt(leastLoadeds.size());
-        return leastLoadeds.get(i);
+    public LeastLoadedBalancer(Publisher<Set<ServiceFactory<Req, Resp>>> factories) {
+        Selector<Req, Resp> linearMin = new LinearMin<>();
+        Supplier<LoadEstimator> msgCount = MsgCountLoadEstimator::new;
+        balancer = new BalancerFactory<>(factories, linearMin, msgCount);
     }
 
     @Override
     public Publisher<Service<Req, Resp>> apply() {
-        return subscriber -> {
-            synchronized (LeastLoadedBalancer.this) {
-                if (buffer.isEmpty()) {
-                    subscriber.onError(new Exception("No Server available in the Loadbalancer!"));
-                } else {
-                    String message = "LeastLoadedBalancer[";
-                    for (WeightedServiceFactory<Req, Resp> factory: buffer) {
-                        message += "sf_" + factory.hashCode() + " load=" + factory.getLoad() + ", ";
-                    }
-                    message += "]";
-                    System.out.println(message);
-
-                    WeightedServiceFactory<Req, Resp> factory = findLeastLoaded();
-                    System.out.println("LeastLoadedBalancer: choosing sf_" + factory.hashCode());
-                    factory.increment();
-                    message = "LeastLoadedBalancer[";
-                    for (WeightedServiceFactory<Req, Resp> factory0: buffer) {
-                        message += "sf_" + factory0.hashCode() + " load=" + factory0.getLoad() + ", ";
-                    }
-                    message += "]";
-                    System.out.println(message);
-                    factory.apply().subscribe(subscriber);
-                }
-            }
-        };
+        return balancer.apply();
     }
 
     @Override
     public synchronized double availability() {
-        return Availabilities.avgOfServiceFactories(buffer);
+        return balancer.availability();
     }
 
     @Override
     public Publisher<Void> close() {
-        return s -> {
-            synchronized (LeastLoadedBalancer.this) {
-                buffer.forEach(svc ->
-                        svc.close().subscribe(new EmptySubscriber<>())
-                );
-            }
-        };
+        return balancer.close();
     }
 }
+

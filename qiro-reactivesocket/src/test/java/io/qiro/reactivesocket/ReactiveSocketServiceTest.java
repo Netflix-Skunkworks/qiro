@@ -22,7 +22,15 @@ public class ReactiveSocketServiceTest {
             .codec(UTF8Codec.INSTANCE)
             .build(new Service<String, String>() {
                 @Override
-                public Publisher<String> apply(Publisher<String> inputs) {
+                public Publisher<String> requestResponse(String input) {
+                    return output -> {
+                        output.onNext(input.toLowerCase());
+                        output.onComplete();
+                    };
+                }
+
+                @Override
+                public Publisher<String> requestChannel(Publisher<String> inputs) {
                     return outputs ->
                         inputs.subscribe(new Subscriber<String>() {
                             @Override
@@ -68,33 +76,41 @@ public class ReactiveSocketServiceTest {
             .codec(UTF8Codec.INSTANCE)
             .build();
 
-        CountDownLatch latch = new CountDownLatch(1);
-        client.apply(from("ping", "blabla")).subscribe(new Subscriber<String>() {
-            @Override
-            public void onSubscribe(Subscription s) {
-                s.request(Long.MAX_VALUE);
-            }
+        long start = System.nanoTime();
+        int n = 1000;
+        CountDownLatch latch = new CountDownLatch(n);
+        while (0 < n) {
+//            client.requestChannel(from("ping", "blabla")).subscribe(new Subscriber<String>() {
+            client.requestResponse("ping").subscribe(new Subscriber<String>() {
+                @Override
+                public void onSubscribe(Subscription s) {
+                    s.request(Long.MAX_VALUE);
+                }
 
-            @Override
-            public void onNext(String response) {
-                System.out.println("Receiving response: '" + response + "'");
-            }
+                @Override
+                public void onNext(String response) {
+//                    System.out.println("Receiving response: '" + response + "'");
+                }
 
-            @Override
-            public void onError(Throwable t) {
-                System.out.println("Receiving an error: " + t);
-                latch.countDown();
-            }
+                @Override
+                public void onError(Throwable t) {
+//                    System.out.println("Receiving an error: " + t);
+                    latch.countDown();
+                }
 
-            @Override
-            public void onComplete() {
-                latch.countDown();
-            }
-        });
+                @Override
+                public void onComplete() {
+                    latch.countDown();
+                }
+            });
+            n -= 1;
+        }
 
         latch.await();
+        long elapsed = System.nanoTime() - start;
         server.close().subscribe(EmptySubscriber.INSTANCE);
 
         System.out.println("### FINITO ###");
+        System.out.println("elapsed: " + elapsed / 1_000_000L);
     }
 }

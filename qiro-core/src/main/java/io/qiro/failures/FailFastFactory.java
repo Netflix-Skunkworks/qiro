@@ -39,25 +39,20 @@ public class FailFastFactory<Req, Resp> implements ServiceFactory<Req, Resp> {
 
     @Override
     public Publisher<Service<Req, Resp>> apply() {
-        return new Publisher<Service<Req, Resp>>() {
-            @Override
-            public void subscribe(Subscriber<? super Service<Req, Resp>> subscriber) {
-                Publishers.transform(
-                    underlying.apply(),
-                    svc -> svc,
-                    exc -> {
-                        // failure to create the Service toggle the state
-                        synchronized (FailFastFactory.this) {
-                            if (state == OK) {
-                                state = new Retrying();
-                                update();
-                            }
-                        }
-                        return exc;
+        return subscriber -> Publishers.transform(
+            underlying.apply(),
+            svc -> svc,
+            exc -> {
+                // failure to create the Service toggle the state
+                synchronized (FailFastFactory.this) {
+                    if (state == OK) {
+                        state = new Retrying();
+                        update();
                     }
-                ).subscribe(subscriber);
+                }
+                return exc;
             }
-        };
+        ).subscribe(subscriber);
     }
 
     @Override

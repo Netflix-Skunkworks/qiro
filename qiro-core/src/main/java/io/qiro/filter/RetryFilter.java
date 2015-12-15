@@ -9,11 +9,10 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.SocketException;
 import java.util.function.Function;
 
-public class RetryFilter<Request, Response> implements Filter<Request, Request, Response, Response> {
+public class RetryFilter<Req, Resp> implements Filter<Req, Req, Resp, Resp> {
     private int limit;
     private Function<Throwable, Boolean> retryThisThrowable;
 
@@ -27,31 +26,26 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
     }
 
     @Override
-    public Publisher<Response> apply(
-        Publisher<Request> inputs, Service<Request, Response> service
-    ) {
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs, Service<Req, Resp> service) {
         return apply(inputs, service, limit);
     }
 
-    public Publisher<Response> apply(
-        Publisher<Request> inputs, Service<Request, Response> service,
-        int retryBudget
-    ) {
-        return new Publisher<Response>() {
+    public Publisher<Resp> apply(Publisher<Req> inputs, Service<Req, Resp> service, int retryBudget) {
+        return new Publisher<Resp>() {
             private boolean started = false;
             private boolean canceled = false;
 
             @Override
-            public void subscribe(Subscriber<? super Response> subscriber) {
-                RestartablePublisher<Request> restartablePublisher = new RestartablePublisher<>(inputs);
-                service.apply(restartablePublisher).subscribe(new Subscriber<Response>() {
+            public void subscribe(Subscriber<? super Resp> subscriber) {
+                RestartablePublisher<Req> restartablePublisher = new RestartablePublisher<>(inputs);
+                service.requestChannel(restartablePublisher).subscribe(new Subscriber<Resp>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         subscriber.onSubscribe(s);
                     }
 
                     @Override
-                    public void onNext(Response response) {
+                    public void onNext(Resp response) {
                         if (canceled) {
                             return;
                         }
@@ -68,7 +62,7 @@ public class RetryFilter<Request, Response> implements Filter<Request, Request, 
                         // it's safe to retry the call.
                         if (retryBudget > 0 && !started && isRetryable(t)) {
                             canceled = true;
-                            Publisher<Response> newResponses =
+                            Publisher<Resp> newResponses =
                                 apply(restartablePublisher.restart(), service, retryBudget - 1);
                             System.out.println("***** retrying");
                             newResponses.subscribe(subscriber);

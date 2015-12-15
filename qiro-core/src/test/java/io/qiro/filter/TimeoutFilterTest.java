@@ -3,6 +3,7 @@ package io.qiro.filter;
 import io.qiro.Service;
 import io.qiro.Services;
 import io.qiro.testing.DelayFilter;
+import io.qiro.testing.FakeTimer;
 import io.qiro.util.EmptySubscriber;
 import org.junit.Test;
 
@@ -27,13 +28,14 @@ public class TimeoutFilterTest {
         System.out.println("TimeoutFilterTest delay: " + delayMs
             + ", timeout: " + timeoutMs + ", expecting failure: " + mustFail);
 
+        FakeTimer timer = new FakeTimer();
         Service<Integer, String> timeoutService =
-            new TimeoutFilter<Integer, String>(timeoutMs)
-                .andThen(new DelayFilter<>(delayMs))
+            new TimeoutFilter<Integer, String>(timeoutMs, timer)
+                .andThen(new DelayFilter<>(delayMs, timer))
                 .andThen(Services.fromFunction(Object::toString));
 
         CountDownLatch latch = new CountDownLatch(1);
-        timeoutService.apply(just(1)).subscribe(new EmptySubscriber<String>() {
+        timeoutService.requestResponse(1).subscribe(new EmptySubscriber<String>() {
             @Override
             public void onNext(String s) {
                 if (mustFail) {
@@ -50,7 +52,8 @@ public class TimeoutFilterTest {
                 latch.countDown();
             }
         });
-
+        timer.advance();
         latch.await();
+
     }
 }

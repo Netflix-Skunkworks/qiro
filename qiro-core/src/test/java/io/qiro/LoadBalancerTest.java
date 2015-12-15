@@ -1,5 +1,6 @@
 package io.qiro;
 
+import io.qiro.loadbalancing.BalancerFactory;
 import io.qiro.loadbalancing.LeastLoadedBalancer;
 import io.qiro.loadbalancing.P2CBalancer;
 import io.qiro.loadbalancing.RoundRobinBalancer;
@@ -14,7 +15,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static io.qiro.util.Publishers.just;
 import static io.qiro.util.Publishers.from;
 import static io.qiro.util.Publishers.toList;
 import static org.junit.Assert.assertEquals;
@@ -36,8 +36,8 @@ public class LoadBalancerTest {
 
         System.out.println("availability: " + service.availability());
 
-        List<String> strings1 = toList(service.apply(from(1, 2)));
-        List<String> strings2 = toList(service.apply(from(3, 4)));
+        List<String> strings1 = toList(service.requestChannel(from(1, 2)));
+        List<String> strings2 = toList(service.requestChannel(from(3, 4)));
         System.out.println(strings1);
         System.out.println(strings2);
 
@@ -66,7 +66,7 @@ public class LoadBalancerTest {
 
     @Test(timeout = 10_000L)
     public void testAsynchronousLeastLoadedBalancer() throws InterruptedException {
-        testFairBalancing(LeastLoadedBalancer::new);
+        testFairBalancing(P2CBalancer::new);
     }
 
     private void testFairBalancing(
@@ -92,10 +92,10 @@ public class LoadBalancerTest {
         ServiceFactory<Integer, String> balancer = balancerFactory.apply(from(factories));
         Service<Integer, String> service = balancer.toService();
 
-        service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
-        service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));
-        service.apply(just(2)).subscribe(new LoggerSubscriber<>("request 2"));
-        service.apply(just(3)).subscribe(new LoggerSubscriber<>("request 3"));
+        service.requestResponse(0).subscribe(new LoggerSubscriber<>("request 0"));
+        service.requestResponse(1).subscribe(new LoggerSubscriber<>("request 1"));
+        service.requestResponse(2).subscribe(new LoggerSubscriber<>("request 2"));
+        service.requestResponse(3).subscribe(new LoggerSubscriber<>("request 3"));
         assertEquals("Fair balancing", service0.queueSize(), service1.queueSize());
 
         service0.respond();
@@ -107,7 +107,7 @@ public class LoadBalancerTest {
         assertEquals("Service1 load is null", service1.queueSize(), 0);
     }
 
-    @Test(timeout = 10_000L)
+    @Test(timeout = 1000_000L)
     public void testLeastLoadedLoadBalancer() throws InterruptedException {
         testMoreFairBalancing(LeastLoadedBalancer::new);
     }
@@ -157,10 +157,10 @@ public class LoadBalancerTest {
         Service<Integer, String> service =
             balancerFactory.apply(from(factories)).toService();
 
-        service.apply(just(0)).subscribe(new LoggerSubscriber<>("request 0"));
-        service.apply(just(1)).subscribe(new LoggerSubscriber<>("request 1"));
-        service.apply(just(2)).subscribe(new LoggerSubscriber<>("request 2"));
-        service.apply(just(3)).subscribe(new LoggerSubscriber<>("request 3"));
+        service.requestResponse(0).subscribe(new LoggerSubscriber<>("request 0"));
+        service.requestResponse(1).subscribe(new LoggerSubscriber<>("request 1"));
+        service.requestResponse(2).subscribe(new LoggerSubscriber<>("request 2"));
+        service.requestResponse(3).subscribe(new LoggerSubscriber<>("request 3"));
 
         // loads: [svc0: 2, svc1: 2]
         assertEquals("Fair balancing", service0.queueSize(), service1.queueSize());
@@ -173,7 +173,7 @@ public class LoadBalancerTest {
 
         // loads is [svc0: 0, svc1: 2]
         // next call will chose service0
-        service.apply(just(4)).subscribe(new LoggerSubscriber<>("request 4"));
+        service.requestResponse(4).subscribe(new LoggerSubscriber<>("request 4"));
 
         // now loads are [svc0: 1, svc1: 2]
         assertEquals(1, service0.queueSize());

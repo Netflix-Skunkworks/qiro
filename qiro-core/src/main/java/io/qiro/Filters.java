@@ -25,10 +25,28 @@ public class Filters {
         ThrowableFunction<FilterReq, Req> fnIn,
         ThrowableFunction<Resp, FilterResp> fnOut
     ) {
-        return (inputs, service) -> {
-            Publisher<Req> requests = map(inputs, fnIn);
-            Publisher<Resp> outputs = service.apply(requests);
-            return map(outputs, fnOut);
+        return new Filter<FilterReq, Req, Resp, FilterResp>() {
+            @Override
+            public Publisher<FilterResp> requestSubscription(FilterReq input, Service<Req, Resp> service) {
+                return s -> {
+                    try {
+                        fnIn.apply(input);
+                        s.onComplete();
+                    } catch (Throwable throwable) {
+                        s.onError(throwable);
+                    }
+                };
+            }
+
+            @Override
+            public Publisher<FilterResp> requestChannel(
+                Publisher<FilterReq> inputs,
+                Service<Req, Resp> service
+            ) {
+                Publisher<Req> requests = map(inputs, fnIn);
+                Publisher<Resp> outputs = service.requestChannel(requests);
+                return map(outputs, fnOut);
+            }
         };
     }
 }

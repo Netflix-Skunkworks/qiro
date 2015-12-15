@@ -6,30 +6,29 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-public class StatsFilter<Request, Response>
-    implements Filter<Request, Request, Response, Response> {
+public class StatsFilter<Req, Resp> implements Filter<Req, Req, Resp, Resp> {
     // TODO: add logger, trace recorder, or equivalent
     public StatsFilter() {
 
     }
 
     @Override
-    public Publisher<Response> apply(Publisher<Request> inputs, Service<Request, Response> service) {
-        return new Publisher<Response>() {
+    public Publisher<Resp> requestChannel(Publisher<Req> inputs, Service<Req, Resp> service) {
+        return new Publisher<Resp>() {
             private Long epoch = -1L;
 
             @Override
-            public void subscribe(Subscriber<? super Response> responseSubscriber) {
+            public void subscribe(Subscriber<? super Resp> responseSubscriber) {
                 epoch = System.currentTimeMillis();
-                service.apply(inputs).subscribe(new Subscriber<Response>() {
+                service.requestChannel(inputs).subscribe(new Subscriber<Resp>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         responseSubscriber.onSubscribe(s);
                     }
 
                     @Override
-                    public void onNext(Response response) {
-                        System.out.println("Response: +1");
+                    public void onNext(Resp response) {
+                        System.out.println("Resp: +1");
                         responseSubscriber.onNext(response);
                     }
 

@@ -10,6 +10,8 @@ import org.reactivestreams.Subscription;
 
 import java.util.concurrent.TimeUnit;
 
+import static io.qiro.util.Publishers.map;
+
 public class FailureAccrualDetector<Req, Resp> implements ServiceFactory<Req, Resp> {
     private static class TimestampRPC {
         private long ts;
@@ -146,22 +148,66 @@ public class FailureAccrualDetector<Req, Resp> implements ServiceFactory<Req, Re
     /**
      * Measure the number of Success/Error and update counters via markFailure/markSuccess
      */
-    private class FailureAccrualService<Request, Response> extends ServiceProxy<Request, Response> {
-        public FailureAccrualService(Service<Request, Response> service) {
+    private class FailureAccrualService<Req, Resp> extends ServiceProxy<Req, Resp> {
+        public FailureAccrualService(Service<Req, Resp> service) {
             super(service);
         }
 
         @Override
-        public Publisher<Response> apply(Publisher<Request> requests) {
+        public Publisher<Void> fireAndForget(Req request) {
+            return map(requestResponse(request), x -> null);
+        }
+
+        @Override
+        public Publisher<Resp> requestResponse(Req request) {
+            return requestStream(request);
+        }
+
+        @Override
+        public Publisher<Resp> requestStream(Req request) {
+            return requestSubscription(request);
+        }
+
+        @Override
+        public Publisher<Resp> requestSubscription(Req request) {
             return respSubscriber ->
-                underlying.apply(requests).subscribe(new Subscriber<Response>() {
+                underlying.requestSubscription(request).subscribe(new Subscriber<Resp>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         respSubscriber.onSubscribe(s);
                     }
 
                     @Override
-                    public void onNext(Response response) {
+                    public void onNext(Resp response) {
+                        respSubscriber.onNext(response);
+                    }
+
+                    @Override
+                    public void onError(Throwable responseFailure) {
+                        // TODO: do not count applicative failure
+                        markFailure();
+                        respSubscriber.onError(responseFailure);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        markSuccess();
+                        respSubscriber.onComplete();
+                    }
+                });
+        }
+
+        @Override
+        public Publisher<Resp> requestChannel(Publisher<Req> requests) {
+            return respSubscriber ->
+                underlying.requestChannel(requests).subscribe(new Subscriber<Resp>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        respSubscriber.onSubscribe(s);
+                    }
+
+                    @Override
+                    public void onNext(Resp response) {
                         respSubscriber.onNext(response);
                     }
 

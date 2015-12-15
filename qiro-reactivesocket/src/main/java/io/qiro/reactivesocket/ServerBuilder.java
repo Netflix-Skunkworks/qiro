@@ -22,9 +22,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
-import static io.qiro.util.Publishers.concat;
-import static io.qiro.util.Publishers.just;
-import static io.qiro.util.Publishers.map;
+import static io.qiro.util.Publishers.*;
 
 public class ServerBuilder<Req, Resp> extends io.qiro.builder.ServerBuilder<Req, Resp> {
     private static ByteBuffer EMPTY = ByteBuffer.allocate(0);
@@ -47,49 +45,17 @@ public class ServerBuilder<Req, Resp> extends io.qiro.builder.ServerBuilder<Req,
                 return new RequestHandler() {
                     @Override
                     public Publisher<Payload> handleRequestResponse(Payload payload) {
-                        return subscriber -> {
-                            Publisher<Payload> outputs = handleChannel(just(payload));
-                            outputs.subscribe(new Subscriber<Payload>() {
-                                private boolean finish = false;
-                                @Override
-                                public void onSubscribe(Subscription s) {
-                                    subscriber.onSubscribe(s);
-                                }
-
-                                @Override
-                                public void onNext(Payload payload1) {
-                                    if (!finish) {
-                                        finish = true;
-                                        subscriber.onNext(payload1);
-                                        subscriber.onComplete();
-                                    }
-                                }
-
-                                @Override
-                                public void onError(Throwable t) {
-                                    if (!finish) {
-                                        subscriber.onError(t);
-                                    }
-                                }
-
-                                @Override
-                                public void onComplete() {
-                                    if (!finish) {
-                                        subscriber.onComplete();
-                                    }
-                                }
-                            });
-                        };
+                        return handleRequestStream(payload);
                     }
 
                     @Override
                     public Publisher<Payload> handleRequestStream(Payload payload) {
-                        return handleChannel(just(payload));
+                        return handleSubscription(payload);
                     }
 
                     @Override
                     public Publisher<Payload> handleSubscription(Payload payload) {
-                        return handleChannel(just(payload));
+                        return handleChannel(payload, never());
                     }
 
                     @Override
@@ -98,7 +64,7 @@ public class ServerBuilder<Req, Resp> extends io.qiro.builder.ServerBuilder<Req,
                     }
 
                     @Override
-                    public Publisher<Payload> handleChannel(Publisher<Payload> inputs) {
+                    public Publisher<Payload> handleChannel(Payload initial, Publisher<Payload> inputs) {
                         return subscriber -> {
                             Publisher<Service<Req, Resp>> servicePublisher = factory.apply();
                             servicePublisher.subscribe(new Subscriber<Service<Req, Resp>>() {
@@ -113,7 +79,7 @@ public class ServerBuilder<Req, Resp> extends io.qiro.builder.ServerBuilder<Req,
                                         payload -> codec.decode(payload.getData())
                                     );
 
-                                    service.apply(requests).subscribe(new Subscriber<Resp>() {
+                                    service.requestChannel(requests).subscribe(new Subscriber<Resp>() {
                                         @Override
                                         public void onSubscribe(Subscription s) {
                                             subscriber.onSubscribe(s);
@@ -162,7 +128,7 @@ public class ServerBuilder<Req, Resp> extends io.qiro.builder.ServerBuilder<Req,
                     @Override
                     public Publisher<Void> handleMetadataPush(Payload payload) {
                         return s -> {
-
+                            // TODO: implement
                         };
                     }
                 };
