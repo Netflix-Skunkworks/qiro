@@ -4,10 +4,10 @@ import io.netty.handler.codec.http.*;
 import io.qiro.Service;
 import io.qiro.ServiceFactory;
 import io.qiro.failures.FailureAccrualDetector;
-import io.qiro.filter.RetryFilter;
 import io.qiro.filter.TimeoutFilter;
 import io.qiro.loadbalancing.P2CBalancer;
 import io.qiro.pool.WatermarkPool;
+import io.qiro.util.HashwheelTimer;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
@@ -47,7 +47,7 @@ public class SimpleHttpClientTest {
         );
 
         Service<HttpRequest, HttpResponse> service =
-            new TimeoutFilter<HttpRequest, HttpResponse>(5000)
+            new TimeoutFilter<HttpRequest, HttpResponse>(5000, HashwheelTimer.INSTANCE)
                 .andThen(new P2CBalancer<>(from(factories)))
                 .toService();
 
@@ -67,7 +67,8 @@ public class SimpleHttpClientTest {
         AtomicInteger success = new AtomicInteger(0);
         AtomicInteger failure = new AtomicInteger(0);
         while (i < n) {
-            service.apply(just(createGetRequest("/", "127.0.0.1")))
+            HttpRequest get = createGetRequest("/", "127.0.0.1");
+            service.requestResponse(get)
                 .subscribe(new Subscriber<HttpResponse>() {
                     public void onSubscribe(Subscription s) {
                         s.request(Long.MAX_VALUE);
