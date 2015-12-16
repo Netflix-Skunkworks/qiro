@@ -43,7 +43,9 @@ public class P2C<Req, Resp> implements Selector<Req, Resp> {
                 i += 1;
             }
 
-            if (factories.get(a).getLoad() < factories.get(b).getLoad()) {
+            double aLoad = factories.get(a).getLoad();
+            double bLoad = factories.get(b).getLoad();
+            if (aLoad < bLoad) {
                 return factories.get(a);
             } else {
                 return factories.get(b);

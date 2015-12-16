@@ -66,7 +66,7 @@ public class LoadBalancerTest {
 
     @Test(timeout = 10_000L)
     public void testAsynchronousLeastLoadedBalancer() throws InterruptedException {
-        testFairBalancing(P2CBalancer::new);
+        testFairBalancing(LeastLoadedBalancer::new);
     }
 
     private void testFairBalancing(
@@ -107,7 +107,7 @@ public class LoadBalancerTest {
         assertEquals("Service1 load is null", service1.queueSize(), 0);
     }
 
-    @Test(timeout = 1000_000L)
+    @Test(timeout = 10_000L)
     public void testLeastLoadedLoadBalancer() throws InterruptedException {
         testMoreFairBalancing(LeastLoadedBalancer::new);
     }

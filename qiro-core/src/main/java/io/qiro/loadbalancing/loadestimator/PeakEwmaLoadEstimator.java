@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
  * Inspired by Finagle loadbalancer algorithm
  */
 public class PeakEwmaLoadEstimator implements LoadEstimator {
-    private static final double PENALTY = Double.MAX_VALUE / 2.0;
+    private static final double PENALTY = Integer.MAX_VALUE / 2.0;
     private static final double TAU = (double) TimeUnit.NANOSECONDS.convert(15, TimeUnit.SECONDS);
 
     private final long epoch = System.nanoTime();
