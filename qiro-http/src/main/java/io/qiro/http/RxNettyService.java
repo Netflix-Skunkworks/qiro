@@ -46,7 +46,7 @@ class RxNettyService implements Service<HttpRequest, HttpResponse> {
 
 
     @Override
-    public Publisher<HttpResponse> apply(Publisher<HttpRequest> inputs) {
+    public Publisher<HttpResponse> requestChannel(Publisher<HttpRequest> inputs) {
         return new Publisher<HttpResponse>() {
             @Override
             public void subscribe(Subscriber<? super HttpResponse> respSubcriber) {
