@@ -4,6 +4,7 @@ import io.qiro.Server;
 import io.qiro.Service;
 import io.qiro.codec.UTF8Codec;
 import io.qiro.util.EmptySubscriber;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -15,7 +16,8 @@ import static io.qiro.util.Publishers.from;
 
 public class ReactiveSocketServiceTest {
 
-    @Test(timeout = 1_000_000L)
+    @Ignore
+    @Test(timeout = 30_000L)
     public void testReactiveSocketPingPong() throws Exception {
         Server server = ServerBuilder.<String, String>get()
             .listen(8888)
